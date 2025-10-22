@@ -168,8 +168,16 @@ def open_pcx():
         # --- INSERT THIS BLOCK HERE ---
         # --- Grayscale Transformation ---
         # --- Grayscale Transformation (side by side) ---
-        gray_img = img.convert("L")
 
+        # --- Grayscale Transformation (manual formula) ---
+        # Transformation function: s = (R + G + B) / 3
+        r, g, b = img.split()
+        gray_pixels = [
+            int((r_val + g_val + b_val) / 3)
+            for r_val, g_val, b_val in zip(r.getdata(), g.getdata(), b.getdata())
+        ]
+        gray_img = Image.new("L", img.size)
+        gray_img.putdata(gray_pixels)
         # Display grayscale image
         gray_img_disp = gray_img.copy()
         gray_img_disp.thumbnail((400, 400))
