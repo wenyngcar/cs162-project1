@@ -1,5 +1,3 @@
-# Cariño & Siapuatco - PCX Reader 
-
 from tkinter import *
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageDraw
@@ -9,7 +7,6 @@ def read_pcx_header(filepath):
     """Read and parse the 128-byte PCX file header."""
     with open(filepath, 'rb') as f:
         h = f.read(128)
-        # Extract key metadata fields from header bytes
         header = {
             'Manufacturer': h[0],
             'Version': h[1],
@@ -24,8 +21,6 @@ def read_pcx_header(filepath):
             'NPlanes': h[65],
             'BytesPerLine': int.from_bytes(h[66:68], 'little'),
         }
-
-        # Compute width and height from coordinate bounds
         header['Width'] = header['Xmax'] - header['Xmin'] + 1
         header['Height'] = header['Ymax'] - header['Ymin'] + 1
         return header
@@ -34,10 +29,9 @@ def read_pcx_header(filepath):
 def read_pcx_palette(filepath):
     """Read the 256-color palette stored at the end of 8-bit PCX files."""
     with open(filepath, 'rb') as f:
-        f.seek(-769, os.SEEK_END)  # move to start of palette marker (0x0C)
-        marker = f.read(1)         # palette identifier (usually 12)
-        data = f.read(768)         # 256 * 3 bytes = 768 (R, G, B)
-        # Build list of RGB tuples
+        f.seek(-769, os.SEEK_END)
+        marker = f.read(1)
+        data = f.read(768)
         palette = [(data[i], data[i+1], data[i+2]) for i in range(0, 768, 3)]
         return palette
 
@@ -45,32 +39,55 @@ def read_pcx_palette(filepath):
 def decompress_rle(filepath):
     """Manually decode PCX pixel data using Run-Length Encoding (RLE)."""
     with open(filepath, 'rb') as f:
-        f.seek(128)  # Skip the 128-byte header
+        f.seek(128)
         pixel_data = []
         file_size = os.path.getsize(filepath)
-        end_pos = file_size - 769  # Stop before palette section
-
-        # Decode RLE bytes until just before palette marker
+        end_pos = file_size - 769
         while f.tell() < end_pos:
             byte = f.read(1)
             if not byte:
                 break
             val = byte[0]
-
-            # If top two bits are 1 (>= 0xC0), it's an RLE count byte
             if val >= 0xC0:
-                count = val & 0x3F          # lower 6 bits store run length
-                data_byte = f.read(1)[0]    # next byte is repeated value
+                count = val & 0x3F
+                data_byte = f.read(1)[0]
                 pixel_data.extend([data_byte] * count)
             else:
-                # Otherwise, the byte is a literal pixel value
                 pixel_data.append(val)
-
         return pixel_data
 
 
-# ----------------------------- GUI FILE HANDLER -----------------------------
+# ----------------------------- NEW FUNCTION -----------------------------
+def show_rgb_channels(img):
+    """Split the given image into R, G, and B channels and display them."""
+    r, g, b = img.split()
 
+    # Convert grayscale channels back into RGB images for visualization
+    r_img = Image.merge("RGB", (r, Image.new("L", r.size), Image.new("L", r.size)))
+    g_img = Image.merge("RGB", (Image.new("L", g.size), g, Image.new("L", g.size)))
+    b_img = Image.merge("RGB", (Image.new("L", b.size), Image.new("L", b.size), b))
+
+    # Create a new window to show channels
+    win = Toplevel()
+    win.title("RGB Channels")
+
+    # Helper function to add image with label
+    def add_image(title, image):
+        image = image.resize((200, 200))
+        photo = ImageTk.PhotoImage(image)
+        frame = Frame(win)
+        frame.pack(side=LEFT, padx=10, pady=10)
+        Label(frame, text=title, font=("Arial", 11, "bold")).pack()
+        lbl = Label(frame, image=photo)
+        lbl.image = photo
+        lbl.pack()
+
+    add_image("Red Channel", r_img)
+    add_image("Green Channel", g_img)
+    add_image("Blue Channel", b_img)
+
+
+# ----------------------------- GUI FILE HANDLER -----------------------------
 def open_pcx():
     """Open a PCX file, decode it, and display its contents in the GUI."""
     filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
@@ -78,12 +95,10 @@ def open_pcx():
         return
 
     try:
-        # Read file header and validate file format
         header = read_pcx_header(filepath)
         if header['BitsPerPixel'] != 8 or header['NPlanes'] != 1:
             raise ValueError("Only 8-bit single-plane PCX files supported.")
 
-        # Read palette and decompress image data
         palette = read_pcx_palette(filepath)
         pixels = decompress_rle(filepath)
 
@@ -93,9 +108,12 @@ def open_pcx():
         if len(pixels) < expected_size:
             raise ValueError("Decompressed pixel data smaller than expected.")
 
-        # Build RGB image using decompressed pixel indices mapped to palette
         img = Image.new('RGB', (width, height))
         img.putdata([palette[p] for p in pixels[:expected_size]])
+
+        # Save current image globally for channel display
+        global current_image
+        current_image = img.copy()
 
         # Display Header Information 
         info_lines = [
@@ -111,12 +129,10 @@ def open_pcx():
         header_text.insert(1.0, '\n'.join(info_lines))
 
         # Display Color Palette 
-        cols = 16          # number of swatches per row
-        swatch = 20        # size of each color block
+        cols = 16
+        swatch = 20
         pal_img = Image.new('RGB', (cols * swatch, (len(palette)//cols) * swatch), 'white')
         draw = ImageDraw.Draw(pal_img)
-
-        # Draw each color square in the palette image
         for i, color in enumerate(palette):
             x = (i % cols) * swatch
             y = (i // cols) * swatch
@@ -127,65 +143,65 @@ def open_pcx():
         palette_label.image = pal_photo
 
         # Display Decompressed Image 
-        img.thumbnail((400, 400))  # resize for display
+        img.thumbnail((400, 400))
         photo = ImageTk.PhotoImage(img)
         img_label.config(image=photo)
         img_label.image = photo
 
-        # Update status message
+        # Enable the "Show RGB Channels" button
+        rgb_button.config(state=NORMAL)
+
         status_label.config(text=f"Loaded: {os.path.basename(filepath)}", fg="green")
 
     except Exception as e:
-        # Show error message if any problem occurs
         status_label.config(text=f"Error: {e}", fg="red")
         import traceback
         traceback.print_exc()
 
 
-# GUI SETUP 
-
+# ----------------------------- GUI SETUP -----------------------------
 def main():
-    """Build and run the PCX Reader GUI window."""
-    global root, status_label, header_text, palette_label, img_label
+    global root, status_label, header_text, palette_label, img_label, rgb_button, current_image
+
+    current_image = None
 
     root = Tk()
     root.title("PCX File Reader (Manual RLE)")
-    root.geometry("900x600")
+    root.geometry("1000x600")
 
-    # Button to open and load PCX file
     Button(root, text="Open PCX File", command=open_pcx, bg="#4CAF50", fg="white",
            font=("Arial", 12, "bold"), padx=20, pady=5).pack(pady=10)
 
-    # Label showing current file status (e.g., loaded or error)
+    # NEW BUTTON for RGB channels
+    rgb_button = Button(root, text="Show RGB Channels", command=lambda: show_rgb_channels(current_image),
+                        bg="#2196F3", fg="white", font=("Arial", 11, "bold"),
+                        padx=10, pady=5, state=DISABLED)
+    rgb_button.pack(pady=5)
+
     status_label = Label(root, text="No file loaded", fg="gray")
     status_label.pack()
 
-    # Main content frame (contains 3 columns: header info, palette, image)
     content = Frame(root)
     content.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-    # Left panel - displays PCX header information
     left = Frame(content)
     left.pack(side=LEFT, fill=BOTH, expand=True)
     Label(left, text="Header Information:", font=("Arial", 11, "bold")).pack(anchor=W)
     header_text = Text(left, width=40, height=15, font=("Courier", 9))
     header_text.pack(fill=BOTH, expand=True, pady=5)
 
-    # Middle panel - shows color palette
     middle = Frame(content)
     middle.pack(side=LEFT, padx=5)
     Label(middle, text="Color Palette:", font=("Arial", 11, "bold")).pack(anchor=W)
     palette_label = Label(middle, bg="white", relief=SUNKEN)
     palette_label.pack(pady=5)
 
-    # Right panel - displays the decoded PCX image
     right = Frame(content)
     right.pack(side=RIGHT, fill=BOTH, expand=True)
     Label(right, text="Image Display:", font=("Arial", 11, "bold")).pack(anchor=W)
     img_label = Label(right, bg="white", relief=SUNKEN)
     img_label.pack(fill=BOTH, expand=True, pady=5)
 
-    # Start the Tkinter main loop
     root.mainloop()
 
 
