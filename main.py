@@ -2,6 +2,8 @@ from tkinter import *
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageDraw
 import os
+import io
+import matplotlib.pyplot as plt
 
 def read_pcx_header(filepath):
     """Read and parse the 128-byte PCX file header."""
@@ -60,7 +62,25 @@ def create_rgb_channel_images(img):
     r_img = Image.merge("RGB", (r, Image.new("L", r.size), Image.new("L", r.size)))
     g_img = Image.merge("RGB", (Image.new("L", g.size), g, Image.new("L", g.size)))
     b_img = Image.merge("RGB", (Image.new("L", b.size), Image.new("L", b.size), b))
-    return r_img, g_img, b_img
+    return r_img, g_img, b_img, (r, g, b)
+
+def create_histogram(channel_img, color):
+    """Generate histogram image from a single grayscale channel."""
+    hist = channel_img.histogram()
+    plt.figure(figsize=(3, 2))
+    plt.bar(range(256), hist, color=color)
+    plt.ylim(0, max(hist) * 1.1)   # 10% breathing room above the real max
+    plt.title(f"{color.capitalize()} Channel Histogram")
+    plt.xlabel("Intensity")
+    plt.ylabel("Frequency")
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    hist_img = Image.open(buf)
+    return hist_img
 
 def open_pcx():
     """Open a PCX file, decode it, and display its contents in the GUI."""
@@ -118,19 +138,24 @@ def open_pcx():
         img_label.config(image=photo)
         img_label.image = photo
 
-        # RGB Channels
-        r_img, g_img, b_img = create_rgb_channel_images(img)
-        for channel_img in (r_img, g_img, b_img):
-            channel_img.thumbnail((250, 250))
-        r_photo = ImageTk.PhotoImage(r_img)
-        g_photo = ImageTk.PhotoImage(g_img)
-        b_photo = ImageTk.PhotoImage(b_img)
-        r_label.config(image=r_photo)
-        r_label.image = r_photo
-        g_label.config(image=g_photo)
-        g_label.image = g_photo
-        b_label.config(image=b_photo)
-        b_label.image = b_photo
+        # RGB Channels and Histograms
+        r_img, g_img, b_img, (r_ch, g_ch, b_ch) = create_rgb_channel_images(img)
+        colors = [('Red', r_img, r_ch), ('Green', g_img, g_ch), ('Blue', b_img, b_ch)]
+        labels = [r_label, g_label, b_label]
+        hist_labels = [r_hist_label, g_hist_label, b_hist_label]
+
+        for (name, ch_img, ch_gray), img_label_widget, hist_label_widget in zip(colors, labels, hist_labels):
+            ch_img.thumbnail((250, 250))
+            ch_photo = ImageTk.PhotoImage(ch_img)
+            img_label_widget.config(image=ch_photo)
+            img_label_widget.image = ch_photo
+
+            # Histogram beside channel
+            hist_img = create_histogram(ch_gray, name.lower())
+            hist_img.thumbnail((250, 250))
+            hist_photo = ImageTk.PhotoImage(hist_img)
+            hist_label_widget.config(image=hist_photo)
+            hist_label_widget.image = hist_photo
 
         status_label.config(text=f"Loaded: {os.path.basename(filepath)}", fg="green")
 
@@ -141,11 +166,11 @@ def open_pcx():
 
 def main():
     global root, status_label, header_text, palette_label, img_label
-    global r_label, g_label, b_label
+    global r_label, g_label, b_label, r_hist_label, g_hist_label, b_hist_label
 
     root = Tk()
-    root.title("PCX File Reader (Scrollable Vertical Layout)")
-    root.geometry("900x700")
+    root.title("PCX File Reader with RGB Histograms")
+    root.geometry("1000x800")
 
     Button(root, text="Open PCX File", command=open_pcx,
            bg="#4CAF50", fg="white", font=("Arial", 12, "bold"),
@@ -169,7 +194,6 @@ def main():
 
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
-
     canvas.pack(side=LEFT, fill=BOTH, expand=True)
     scrollbar.pack(side=RIGHT, fill=Y)
 
@@ -188,21 +212,33 @@ def main():
     img_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
     img_label.pack(pady=10)
 
-    # RGB Channels
-    Label(scrollable_frame, text="RGB Channels:", font=("Arial", 11, "bold")).pack(anchor=W)
-    r_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
-    r_label.pack(pady=5)
-    Label(scrollable_frame, text="Red Channel", font=("Arial", 10, "bold")).pack()
+    # RGB Channels and Histograms (side by side)
+    channel_labels = {}
+    histogram_labels = {}
 
-    g_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
-    g_label.pack(pady=5)
-    Label(scrollable_frame, text="Green Channel", font=("Arial", 10, "bold")).pack()
+    for title, key in zip(
+        ["Red Channel", "Green Channel", "Blue Channel"],
+        ["r", "g", "b"]
+    ):
+        Label(scrollable_frame, text=title, font=("Arial", 11, "bold")).pack(anchor=W)
+        frame = Frame(scrollable_frame)
+        frame.pack(pady=5)
 
-    b_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
-    b_label.pack(pady=5)
-    Label(scrollable_frame, text="Blue Channel", font=("Arial", 10, "bold")).pack()
+        channel_labels[key] = Label(frame, bg="white", relief=SUNKEN)
+        channel_labels[key].pack(side=LEFT, padx=10)
 
-    # Allow mousewheel scrolling
+        histogram_labels[key] = Label(frame, bg="white", relief=SUNKEN)
+        histogram_labels[key].pack(side=LEFT, padx=10)
+
+    # now clean & guaranteed
+    r_label = channel_labels["r"]
+    g_label = channel_labels["g"]
+    b_label = channel_labels["b"]
+    r_hist_label = histogram_labels["r"]
+    g_hist_label = histogram_labels["g"]
+    b_hist_label = histogram_labels["b"]
+
+    # Mousewheel scroll
     def _on_mousewheel(event):
         canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
