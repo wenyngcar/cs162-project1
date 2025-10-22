@@ -25,7 +25,6 @@ def read_pcx_header(filepath):
         header['Height'] = header['Ymax'] - header['Ymin'] + 1
         return header
 
-
 def read_pcx_palette(filepath):
     """Read the 256-color palette stored at the end of 8-bit PCX files."""
     with open(filepath, 'rb') as f:
@@ -34,7 +33,6 @@ def read_pcx_palette(filepath):
         data = f.read(768)
         palette = [(data[i], data[i+1], data[i+2]) for i in range(0, 768, 3)]
         return palette
-
 
 def decompress_rle(filepath):
     """Manually decode PCX pixel data using Run-Length Encoding (RLE)."""
@@ -56,38 +54,14 @@ def decompress_rle(filepath):
                 pixel_data.append(val)
         return pixel_data
 
-
-# ----------------------------- NEW FUNCTION -----------------------------
-def show_rgb_channels(img):
-    """Split the given image into R, G, and B channels and display them."""
+def create_rgb_channel_images(img):
+    """Return three images showing the Red, Green, and Blue channels separately."""
     r, g, b = img.split()
-
-    # Convert grayscale channels back into RGB images for visualization
     r_img = Image.merge("RGB", (r, Image.new("L", r.size), Image.new("L", r.size)))
     g_img = Image.merge("RGB", (Image.new("L", g.size), g, Image.new("L", g.size)))
     b_img = Image.merge("RGB", (Image.new("L", b.size), Image.new("L", b.size), b))
+    return r_img, g_img, b_img
 
-    # Create a new window to show channels
-    win = Toplevel()
-    win.title("RGB Channels")
-
-    # Helper function to add image with label
-    def add_image(title, image):
-        image = image.resize((200, 200))
-        photo = ImageTk.PhotoImage(image)
-        frame = Frame(win)
-        frame.pack(side=LEFT, padx=10, pady=10)
-        Label(frame, text=title, font=("Arial", 11, "bold")).pack()
-        lbl = Label(frame, image=photo)
-        lbl.image = photo
-        lbl.pack()
-
-    add_image("Red Channel", r_img)
-    add_image("Green Channel", g_img)
-    add_image("Blue Channel", b_img)
-
-
-# ----------------------------- GUI FILE HANDLER -----------------------------
 def open_pcx():
     """Open a PCX file, decode it, and display its contents in the GUI."""
     filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
@@ -111,11 +85,7 @@ def open_pcx():
         img = Image.new('RGB', (width, height))
         img.putdata([palette[p] for p in pixels[:expected_size]])
 
-        # Save current image globally for channel display
-        global current_image
-        current_image = img.copy()
-
-        # Display Header Information 
+        # Header Info
         info_lines = [
             f"Manufacturer: {header['Manufacturer']}",
             f"Version: {header['Version']}",
@@ -128,7 +98,7 @@ def open_pcx():
         header_text.delete(1.0, END)
         header_text.insert(1.0, '\n'.join(info_lines))
 
-        # Display Color Palette 
+        # Palette
         cols = 16
         swatch = 20
         pal_img = Image.new('RGB', (cols * swatch, (len(palette)//cols) * swatch), 'white')
@@ -137,19 +107,30 @@ def open_pcx():
             x = (i % cols) * swatch
             y = (i // cols) * swatch
             draw.rectangle([x, y, x + swatch - 1, y + swatch - 1], fill=color, outline='gray')
-
         pal_photo = ImageTk.PhotoImage(pal_img)
-        palette_label.config(image=pal_photo, text="")
+        palette_label.config(image=pal_photo)
         palette_label.image = pal_photo
 
-        # Display Decompressed Image 
-        img.thumbnail((400, 400))
-        photo = ImageTk.PhotoImage(img)
+        # Main Image
+        img_disp = img.copy()
+        img_disp.thumbnail((400, 400))
+        photo = ImageTk.PhotoImage(img_disp)
         img_label.config(image=photo)
         img_label.image = photo
 
-        # Enable the "Show RGB Channels" button
-        rgb_button.config(state=NORMAL)
+        # RGB Channels
+        r_img, g_img, b_img = create_rgb_channel_images(img)
+        for channel_img in (r_img, g_img, b_img):
+            channel_img.thumbnail((250, 250))
+        r_photo = ImageTk.PhotoImage(r_img)
+        g_photo = ImageTk.PhotoImage(g_img)
+        b_photo = ImageTk.PhotoImage(b_img)
+        r_label.config(image=r_photo)
+        r_label.image = r_photo
+        g_label.config(image=g_photo)
+        g_label.image = g_photo
+        b_label.config(image=b_photo)
+        b_label.image = b_photo
 
         status_label.config(text=f"Loaded: {os.path.basename(filepath)}", fg="green")
 
@@ -158,53 +139,76 @@ def open_pcx():
         import traceback
         traceback.print_exc()
 
-
-# ----------------------------- GUI SETUP -----------------------------
 def main():
-    global root, status_label, header_text, palette_label, img_label, rgb_button, current_image
-
-    current_image = None
+    global root, status_label, header_text, palette_label, img_label
+    global r_label, g_label, b_label
 
     root = Tk()
-    root.title("PCX File Reader (Manual RLE)")
-    root.geometry("1000x600")
+    root.title("PCX File Reader (Scrollable Vertical Layout)")
+    root.geometry("900x700")
 
-    Button(root, text="Open PCX File", command=open_pcx, bg="#4CAF50", fg="white",
-           font=("Arial", 12, "bold"), padx=20, pady=5).pack(pady=10)
-
-    # NEW BUTTON for RGB channels
-    rgb_button = Button(root, text="Show RGB Channels", command=lambda: show_rgb_channels(current_image),
-                        bg="#2196F3", fg="white", font=("Arial", 11, "bold"),
-                        padx=10, pady=5, state=DISABLED)
-    rgb_button.pack(pady=5)
+    Button(root, text="Open PCX File", command=open_pcx,
+           bg="#4CAF50", fg="white", font=("Arial", 12, "bold"),
+           padx=20, pady=5).pack(pady=10)
 
     status_label = Label(root, text="No file loaded", fg="gray")
     status_label.pack()
 
-    content = Frame(root)
-    content.pack(fill=BOTH, expand=True, padx=10, pady=10)
+    # Scrollable Canvas setup
+    container = Frame(root)
+    container.pack(fill=BOTH, expand=True)
 
-    left = Frame(content)
-    left.pack(side=LEFT, fill=BOTH, expand=True)
-    Label(left, text="Header Information:", font=("Arial", 11, "bold")).pack(anchor=W)
-    header_text = Text(left, width=40, height=15, font=("Courier", 9))
-    header_text.pack(fill=BOTH, expand=True, pady=5)
+    canvas = Canvas(container)
+    scrollbar = Scrollbar(container, orient=VERTICAL, command=canvas.yview)
+    scrollable_frame = Frame(canvas)
 
-    middle = Frame(content)
-    middle.pack(side=LEFT, padx=5)
-    Label(middle, text="Color Palette:", font=("Arial", 11, "bold")).pack(anchor=W)
-    palette_label = Label(middle, bg="white", relief=SUNKEN)
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+    )
+
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    canvas.pack(side=LEFT, fill=BOTH, expand=True)
+    scrollbar.pack(side=RIGHT, fill=Y)
+
+    # Header
+    Label(scrollable_frame, text="Header Information:", font=("Arial", 11, "bold")).pack(anchor=W)
+    header_text = Text(scrollable_frame, width=70, height=10, font=("Courier", 9))
+    header_text.pack(pady=5)
+
+    # Palette
+    Label(scrollable_frame, text="Color Palette:", font=("Arial", 11, "bold")).pack(anchor=W)
+    palette_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
     palette_label.pack(pady=5)
 
-    right = Frame(content)
-    right.pack(side=RIGHT, fill=BOTH, expand=True)
-    Label(right, text="Image Display:", font=("Arial", 11, "bold")).pack(anchor=W)
-    img_label = Label(right, bg="white", relief=SUNKEN)
-    img_label.pack(fill=BOTH, expand=True, pady=5)
+    # Main Image
+    Label(scrollable_frame, text="Decompressed Image:", font=("Arial", 11, "bold")).pack(anchor=W)
+    img_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
+    img_label.pack(pady=10)
+
+    # RGB Channels
+    Label(scrollable_frame, text="RGB Channels:", font=("Arial", 11, "bold")).pack(anchor=W)
+    r_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
+    r_label.pack(pady=5)
+    Label(scrollable_frame, text="Red Channel", font=("Arial", 10, "bold")).pack()
+
+    g_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
+    g_label.pack(pady=5)
+    Label(scrollable_frame, text="Green Channel", font=("Arial", 10, "bold")).pack()
+
+    b_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
+    b_label.pack(pady=5)
+    Label(scrollable_frame, text="Blue Channel", font=("Arial", 10, "bold")).pack()
+
+    # Allow mousewheel scrolling
+    def _on_mousewheel(event):
+        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
     root.mainloop()
 
-
-# PROGRAM ENTRY POINT 
 if __name__ == "__main__":
     main()
