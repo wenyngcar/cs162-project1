@@ -22,6 +22,9 @@ def read_pcx_header(filepath):
             'VDPI': int.from_bytes(h[14:16], 'little'),
             'NPlanes': h[65],
             'BytesPerLine': int.from_bytes(h[66:68], 'little'),
+            'PaletteInfo': int.from_bytes(h[68:70], 'little'),
+            'HScreenSize': int.from_bytes(h[70:72], 'little'),
+            'VScreenSize': int.from_bytes(h[72:74], 'little'),
         }
         header['Width'] = header['Xmax'] - header['Xmin'] + 1
         header['Height'] = header['Ymax'] - header['Ymin'] + 1
@@ -111,9 +114,14 @@ def open_pcx():
             f"Version: {header['Version']}",
             f"Encoding: {header['Encoding']}",
             f"Bits per Pixel: {header['BitsPerPixel']}",
-            f"Dimensions: {width}x{height}",
-            f"Color Planes: {header['NPlanes']}",
+            f"Image Dimensions: {width} x {height}",
+            f"HDPI: {header['HDPI']}",
+            f"VDPI: {header['VDPI']}",
+            f"Number of Color Planes: {header['NPlanes']}",
             f"Bytes per Line: {header['BytesPerLine']}",
+            f"Palette Information: {header['PaletteInfo']}",
+            f"Horizontal Screen Size: {header['HScreenSize']}",
+            f"Vertical Screen Size: {header['VScreenSize']}",
         ]
         header_text.delete(1.0, END)
         header_text.insert(1.0, '\n'.join(info_lines))
