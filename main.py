@@ -157,6 +157,39 @@ def open_pcx():
             hist_label_widget.config(image=hist_photo)
             hist_label_widget.image = hist_photo
 
+        # --- INSERT THIS BLOCK HERE ---
+        # --- Grayscale Transformation ---
+        # --- Grayscale Transformation (side by side) ---
+        gray_img = img.convert("L")
+
+        # Display grayscale image
+        gray_img_disp = gray_img.copy()
+        gray_img_disp.thumbnail((400, 400))
+        gray_photo = ImageTk.PhotoImage(gray_img_disp)
+        gray_label.config(image=gray_photo)
+        gray_label.image = gray_photo
+
+        # Create and display grayscale histogram beside it
+        gray_hist = gray_img.histogram()
+        plt.figure(figsize=(4, 3))
+        plt.bar(range(256), gray_hist, color='gray')
+        plt.title("Grayscale Histogram")
+        plt.xlabel("Intensity")
+        plt.ylabel("Frequency")
+        plt.tight_layout()
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        plt.close()
+        buf.seek(0)
+        gray_hist_img = Image.open(buf)
+
+        gray_hist_img.thumbnail((400, 400))
+        gray_hist_photo = ImageTk.PhotoImage(gray_hist_img)
+        gray_hist_label.config(image=gray_hist_photo)
+        gray_hist_label.image = gray_hist_photo
+        # --- END INSERTED BLOCK ---
+
         status_label.config(text=f"Loaded: {os.path.basename(filepath)}", fg="green")
 
     except Exception as e:
@@ -167,6 +200,8 @@ def open_pcx():
 def main():
     global root, status_label, header_text, palette_label, img_label
     global r_label, g_label, b_label, r_hist_label, g_hist_label, b_hist_label
+    global scrollable_frame
+    global gray_label, gray_hist_label
 
     root = Tk()
     root.title("PCX File Reader with RGB Histograms")
@@ -237,6 +272,18 @@ def main():
     r_hist_label = histogram_labels["r"]
     g_hist_label = histogram_labels["g"]
     b_hist_label = histogram_labels["b"]
+
+    # Grayscale Image and Histogram (side by side)
+    Label(scrollable_frame, text="Grayscale Image:", font=("Arial", 11, "bold")).pack(anchor=W)
+    gray_frame = Frame(scrollable_frame)
+    gray_frame.pack(pady=10)
+
+    gray_label = Label(gray_frame, bg="white", relief=SUNKEN)
+    gray_label.pack(side=LEFT, padx=10)
+
+    gray_hist_label = Label(gray_frame, bg="white", relief=SUNKEN)
+    gray_hist_label.pack(side=LEFT, padx=10)
+
 
     # Mousewheel scroll
     def _on_mousewheel(event):
