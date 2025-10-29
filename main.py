@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageTk
 import os, io, matplotlib.pyplot as plt
 
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
-from image_processing import create_rgb_channel_images, create_histogram, create_grayscale_image
+from image_processing import create_grayscale_image
 from ui_components import create_main_ui
 
 def open_pcx(widgets):
@@ -43,24 +43,6 @@ def open_pcx(widgets):
         photo = ImageTk.PhotoImage(img_disp)
         widgets["img"].config(image=photo)
         widgets["img"].image = photo
-
-        # RGB + histograms
-        r_img, g_img, b_img, (r_ch, g_ch, b_ch) = create_rgb_channel_images(img)
-        for color, ch_img, ch_gray in zip(
-            ["r", "g", "b"],
-            [r_img, g_img, b_img],
-            [r_ch, g_ch, b_ch]
-        ):
-            ch_img.thumbnail((250, 250))
-            photo = ImageTk.PhotoImage(ch_img)
-            widgets[color].config(image=photo)
-            widgets[color].image = photo
-
-            hist_img = create_histogram(ch_gray, color)
-            hist_img.thumbnail((250, 250))
-            hist_photo = ImageTk.PhotoImage(hist_img)
-            widgets[f"{color}_hist"].config(image=hist_photo)
-            widgets[f"{color}_hist"].image = hist_photo
 
         # Grayscale + histogram
         gray_img = create_grayscale_image(img)

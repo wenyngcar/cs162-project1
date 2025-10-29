@@ -39,18 +39,6 @@ def create_main_ui(root, open_callback):
     img_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
     img_label.pack(pady=10)
 
-    # RGB channel + histogram layout
-    channel_labels = {}
-    histogram_labels = {}
-    for title, key in zip(["Red Channel", "Green Channel", "Blue Channel"], ["r", "g", "b"]):
-        Label(scrollable_frame, text=title, font=("Arial", 11, "bold")).pack(anchor=W)
-        frame = Frame(scrollable_frame)
-        frame.pack(pady=5)
-        channel_labels[key] = Label(frame, bg="white", relief=SUNKEN)
-        channel_labels[key].pack(side=LEFT, padx=10)
-        histogram_labels[key] = Label(frame, bg="white", relief=SUNKEN)
-        histogram_labels[key].pack(side=LEFT, padx=10)
-
     # Grayscale + histogram
     Label(scrollable_frame, text="Grayscale Image:", font=("Arial", 11, "bold")).pack(anchor=W)
     gray_frame = Frame(scrollable_frame)
@@ -70,7 +58,5 @@ def create_main_ui(root, open_callback):
         "header": header_text,
         "palette": palette_label,
         "img": img_label,
-        "r": channel_labels["r"], "g": channel_labels["g"], "b": channel_labels["b"],
-        "r_hist": histogram_labels["r"], "g_hist": histogram_labels["g"], "b_hist": histogram_labels["b"],
         "gray": gray_label, "gray_hist": gray_hist_label
     }
