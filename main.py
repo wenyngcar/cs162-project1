@@ -1,9 +1,8 @@
 from tkinter import Tk, filedialog, Label
 from PIL import Image, ImageDraw, ImageTk
 import os, io, matplotlib.pyplot as plt
-
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
-from image_processing import create_grayscale_image
+from image_processing import create_grayscale_image, create_negative_image
 from ui_components import create_main_ui
 
 def open_pcx(widgets):
@@ -51,6 +50,24 @@ def open_pcx(widgets):
         gray_photo = ImageTk.PhotoImage(gray_disp)
         widgets["gray"].config(image=gray_photo)
         widgets["gray"].image = gray_photo
+
+        # Negative Image
+        neg_img = create_negative_image(gray_img)
+        neg_disp = neg_img.copy()
+        neg_disp.thumbnail((400, 400))
+        neg_photo = ImageTk.PhotoImage(neg_disp)
+
+        # Create a new label for displaying the negative image
+        if "negative" not in widgets:
+            from tkinter import Label
+            neg_label_title = Label(widgets["gray"].master.master, text="Negative Image:", font=("Arial", 11, "bold"))
+            neg_label_title.pack(anchor="w")
+            neg_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+            neg_label.pack(pady=10)
+            widgets["negative"] = neg_label
+
+        widgets["negative"].config(image=neg_photo)
+        widgets["negative"].image = neg_photo
 
         gray_hist = gray_img.histogram()
         plt.figure(figsize=(4, 3))

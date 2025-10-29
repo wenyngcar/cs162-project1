@@ -1,6 +1,8 @@
 from PIL import Image
 import matplotlib.pyplot as plt
 import io
+from tkinter import simpledialog
+import numpy as np
 
 # Return three images showing R, G, and B channels separately.
 def create_rgb_channel_images(img):
@@ -38,3 +40,14 @@ def create_grayscale_image(img):
     gray_img = Image.new("L", img.size)
     gray_img.putdata(gray_pixels)
     return gray_img
+
+# Negative Transformation (grayscale-based)
+def create_negative_image(img):
+    # Return the negative of the grayscale version of the image.
+    # Convert to grayscale first
+    gray_img = img.convert("L")
+    
+    # Invert pixel values
+    inverted_img = Image.eval(gray_img, lambda px: 255 - px)
+    
+    return inverted_img
