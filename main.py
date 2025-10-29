@@ -4,7 +4,7 @@ import os, io, matplotlib.pyplot as plt
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
 from image_processing import create_grayscale_image, create_negative_image
 from ui_components import create_main_ui
-
+from image_processing import create_threshold_image
 def open_pcx(widgets):
     filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
     if not filepath:
@@ -65,6 +65,45 @@ def open_pcx(widgets):
             neg_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
             neg_label.pack(pady=10)
             widgets["negative"] = neg_label
+        
+
+        # --- Black/White via Manual Thresholding ---
+        bw_img = create_threshold_image(gray_img)
+        if bw_img:
+            bw_disp = bw_img.copy()
+            bw_disp.thumbnail((400, 400))
+            bw_photo = ImageTk.PhotoImage(bw_disp)
+
+            if "bw" not in widgets:
+                from tkinter import Label
+                bw_label_title = Label(widgets["gray"].master.master, text="Black/White (Manual Thresholding):", font=("Arial", 11, "bold"))
+                bw_label_title.pack(anchor="w")
+                bw_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+                bw_label.pack(pady=10)
+                widgets["bw"] = bw_label
+
+            widgets["bw"].config(image=bw_photo)
+            widgets["bw"].image = bw_photo
+
+
+# --- Power-Law (Gamma) Transformation ---
+        from image_processing import create_gamma_image
+        gamma_img = create_gamma_image(gray_img)
+        if gamma_img:
+            gamma_disp = gamma_img.copy()
+            gamma_disp.thumbnail((400, 400))
+            gamma_photo = ImageTk.PhotoImage(gamma_disp)
+
+            if "gamma" not in widgets:
+                gamma_label_title = Label(widgets["gray"].master.master, text="Power-Law (Gamma) Transformation:", font=("Arial", 11, "bold"))
+                gamma_label_title.pack(anchor="w")
+                gamma_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+                gamma_label.pack(pady=10)
+                widgets["gamma"] = gamma_label
+
+            widgets["gamma"].config(image=gamma_photo)
+            widgets["gamma"].image = gamma_photo
+
 
         widgets["negative"].config(image=neg_photo)
         widgets["negative"].image = neg_photo
@@ -89,6 +128,8 @@ def open_pcx(widgets):
         widgets["status"].config(text=f"Error: {e}", fg="red")
         import traceback
         traceback.print_exc()
+
+    
 
 def main():
     root = Tk()
