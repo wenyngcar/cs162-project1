@@ -5,6 +5,7 @@ from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
 from image_processing import create_grayscale_image, create_negative_image
 from ui_components import create_main_ui
 from image_processing import create_threshold_image
+from histogram_equalization import histogram_equalization
 def open_pcx(widgets):
     filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
     if not filepath:
@@ -128,7 +129,8 @@ def open_pcx(widgets):
         widgets["status"].config(text=f"Error: {e}", fg="red")
         import traceback
         traceback.print_exc()
-
+# --- Histogram Equalization ---
+    histogram_equalization(filepath)
     
 
 def main():
