@@ -158,9 +158,9 @@ def open_pcx(widgets):
         # Negative Image
         neg_img = create_negative_image(gray_img)
         if "negative" not in widgets:
-            neg_label_title = Label(widgets["gray"].master.master, text="Negative Image:", font=("Arial", 11, "bold"))
+            neg_label_title = Label(widgets["point_processing_frame"], text="Negative Image:", font=("Arial", 11, "bold"))
             neg_label_title.pack(anchor="w")
-            neg_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+            neg_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
             neg_label.pack(pady=10)
             widgets["negative"] = neg_label
         _set_widget_image(widgets, "negative", _thumbnail_photo(neg_img, (400, 400)))
@@ -169,22 +169,20 @@ def open_pcx(widgets):
         bw_img = create_threshold_image(gray_img)
         if bw_img:
             if "bw" not in widgets:
-                bw_label_title = Label(widgets["gray"].master.master, text="Black/White (Manual Thresholding):", font=("Arial", 11, "bold"))
+                bw_label_title = Label(widgets["point_processing_frame"], text="Black/White (Manual Thresholding):", font=("Arial", 11, "bold"))
                 bw_label_title.pack(anchor="w")
-                bw_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+                bw_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
                 bw_label.pack(pady=10)
                 widgets["bw"] = bw_label
             _set_widget_image(widgets, "bw", _thumbnail_photo(bw_img, (400, 400)))
 
-
-
-# --- Power-Law (Gamma) Transformation ---
+        # --- Power-Law (Gamma) Transformation ---
         gamma_img = create_gamma_image(gray_img)
         if gamma_img:
             if "gamma" not in widgets:
-                gamma_label_title = Label(widgets["gray"].master.master, text="Power-Law (Gamma) Transformation:", font=("Arial", 11, "bold"))
+                gamma_label_title = Label(widgets["point_processing_frame"], text="Power-Law (Gamma) Transformation:", font=("Arial", 11, "bold"))
                 gamma_label_title.pack(anchor="w")
-                gamma_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+                gamma_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
                 gamma_label.pack(pady=10)
                 widgets["gamma"] = gamma_label
             _set_widget_image(widgets, "gamma", _thumbnail_photo(gamma_img, (400, 400)))
@@ -192,15 +190,15 @@ def open_pcx(widgets):
         # --- Histogram Equalization ---
         eq_img, eq_hist_img = histogram_equalization(gray_img)
         if "hist_eq" not in widgets:
-            eq_label_title = Label(widgets["gray"].master.master, text="Histogram Equalization:", font=("Arial", 11, "bold"))
+            eq_label_title = Label(widgets["point_processing_frame"], text="Histogram Equalization:", font=("Arial", 11, "bold"))
             eq_label_title.pack(anchor="w")
-            eq_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+            eq_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
             eq_label.pack(pady=10)
             widgets["hist_eq"] = eq_label
             
-            eq_hist_label_title = Label(widgets["gray"].master.master, text="Histogram Comparison:", font=("Arial", 11, "bold"))
+            eq_hist_label_title = Label(widgets["point_processing_frame"], text="Histogram Comparison:", font=("Arial", 11, "bold"))
             eq_hist_label_title.pack(anchor="w")
-            eq_hist_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+            eq_hist_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
             eq_hist_label.pack(pady=10)
             widgets["hist_eq_comparison"] = eq_hist_label
         
