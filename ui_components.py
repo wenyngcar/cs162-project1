@@ -46,6 +46,38 @@ def create_main_ui(root, open_callback):
     img_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
     img_label.pack(pady=10)
 
+    # RGB Channels
+    Label(scrollable_frame, text="RGB Channels:", font=("Arial", 11, "bold")).pack(anchor=W)
+    rgb_frame = Frame(scrollable_frame)
+    rgb_frame.pack(pady=10)
+    
+    # Red channel
+    red_frame = Frame(rgb_frame)
+    red_frame.pack(side=LEFT, padx=5)
+    Label(red_frame, text="Red Channel", font=("Arial", 9, "bold"), fg="red").pack()
+    red_label = Label(red_frame, bg="white", relief=SUNKEN)
+    red_label.pack()
+    red_hist_label = Label(red_frame, bg="white", relief=SUNKEN)
+    red_hist_label.pack(pady=2)
+    
+    # Green channel
+    green_frame = Frame(rgb_frame)
+    green_frame.pack(side=LEFT, padx=5)
+    Label(green_frame, text="Green Channel", font=("Arial", 9, "bold"), fg="green").pack()
+    green_label = Label(green_frame, bg="white", relief=SUNKEN)
+    green_label.pack()
+    green_hist_label = Label(green_frame, bg="white", relief=SUNKEN)
+    green_hist_label.pack(pady=2)
+    
+    # Blue channel
+    blue_frame = Frame(rgb_frame)
+    blue_frame.pack(side=LEFT, padx=5)
+    Label(blue_frame, text="Blue Channel", font=("Arial", 9, "bold"), fg="blue").pack()
+    blue_label = Label(blue_frame, bg="white", relief=SUNKEN)
+    blue_label.pack()
+    blue_hist_label = Label(blue_frame, bg="white", relief=SUNKEN)
+    blue_hist_label.pack(pady=2)
+
     # Grayscale + histogram
     Label(scrollable_frame, text="Grayscale Image:", font=("Arial", 11, "bold")).pack(anchor=W)
     gray_frame = Frame(scrollable_frame)
@@ -67,5 +99,8 @@ def create_main_ui(root, open_callback):
         "rgb_info": rgb_info_label,
         "palette": palette_label,
         "img": img_label,
+        "red": red_label, "red_hist": red_hist_label,
+        "green": green_label, "green_hist": green_hist_label,
+        "blue": blue_label, "blue_hist": blue_hist_label,
         "gray": gray_label, "gray_hist": gray_hist_label
     }
