@@ -35,6 +35,8 @@ def open_pcx(widgets):
         img = Image.new("RGB", (width, height))
         img.putdata([palette[p] for p in pixels[:width * height]])
 
+        widgets["current_image"] = img
+
         # ? Create and store grayscale image immediately
         gray_img = create_grayscale_image(img)
         widgets["gray_image"] = gray_img
@@ -67,6 +69,7 @@ def open_pcx(widgets):
         pal_img = render_palette_preview(palette)
         set_widget_image(widgets, "palette", thumbnail_photo(pal_img, (400, 400)))
         set_widget_image(widgets, "img", thumbnail_photo(img, (400, 400)))
+        widgets["current_image"] = img
 
         # ========== RGB CHANNELS & HISTOGRAMS ==========
         r_img, g_img, b_img, (r_channel, g_channel, b_channel) = create_rgb_channel_images(img)
