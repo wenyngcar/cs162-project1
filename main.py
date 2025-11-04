@@ -18,6 +18,7 @@ from filters.sharpening_filters import (
     unsharp_masking,
     highboost_filtering,
 )
+from filters.gradient import gradient_sobel
 
 # Registry of available filters and their parameter prompts
 FILTERS = {
@@ -43,6 +44,10 @@ FILTERS = {
             ("boost_factor", "float", 2.0, {"min": 1.0, "max": 3}),
             ("kernel_size", "int", 3, {"min": 3, "odd": True}),
         ],
+    },
+    "Gradient (Sobel)": {
+        "fn": gradient_sobel,
+        "params": [],  # No parameters needed
     },
 }
 
