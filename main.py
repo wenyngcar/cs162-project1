@@ -25,6 +25,38 @@ def open_pcx(widgets):
         info = [f"{k}: {v}" for k, v in header.items()]
         widgets["header"].delete(1.0, "end")
         widgets["header"].insert(1.0, '\n'.join(info))
+        
+        # Original Image (clickable for RGB values)
+        original_img = img.copy()
+        original_img_disp = original_img.copy()
+        original_img_disp.thumbnail((400, 400))
+        original_photo = ImageTk.PhotoImage(original_img_disp)
+        widgets["original_img"].config(image=original_photo)
+        widgets["original_img"].image = original_photo
+        
+        # Calculate scale factor for click coordinates
+        scale_x = original_img.width / original_img_disp.width
+        scale_y = original_img.height / original_img_disp.height
+        
+        # Add click handler to show RGB values
+        def show_rgb_values(event):
+            # Convert click coordinates to original image coordinates
+            x = int(event.x * scale_x)
+            y = int(event.y * scale_y)
+            
+            # Check if coordinates are within bounds
+            if 0 <= x < original_img.width and 0 <= y < original_img.height:
+                rgb = original_img.getpixel((x, y))
+                widgets["rgb_info"].config(
+                    text=f"Position: ({x}, {y}) | RGB: {rgb} | R={rgb[0]}, G={rgb[1]}, B={rgb[2]}"
+                )
+            else:
+                widgets["rgb_info"].config(text="Click inside the image to see RGB values")
+        
+        # Bind click event
+        widgets["original_img"].bind("<Button-1>", show_rgb_values)
+        
+        # Image
 
         # Palette preview
         cols, swatch = 16, 20
