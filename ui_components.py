@@ -87,6 +87,28 @@ def create_main_ui(root, open_callback):
     gray_hist_label = Label(gray_frame, bg="white", relief=SUNKEN)
     gray_hist_label.pack(side=LEFT, padx=10)
 
+    # Smoothing Filters section (dropdown + single apply + single result)
+    Label(scrollable_frame, text="Smoothing Filters:", font=("Arial", 11, "bold")).pack(anchor=W)
+    filters_frame = Frame(scrollable_frame)
+    filters_frame.pack(pady=10, fill=X)
+
+    from tkinter import StringVar, OptionMenu
+    selector_row = Frame(filters_frame)
+    selector_row.pack(anchor=W, pady=2)
+    Label(selector_row, text="Filter:").pack(side=LEFT, padx=(0, 6))
+    filter_select_var = StringVar()
+    filter_select = OptionMenu(selector_row, filter_select_var, "")
+    filter_select.config(width=18)
+    filter_select.pack(side=LEFT)
+    apply_filter_btn = Button(selector_row, text="Apply Filter")
+    apply_filter_btn.pack(side=LEFT, padx=8)
+
+    result_frame = Frame(filters_frame)
+    result_frame.pack(pady=8, fill=X)
+    Label(result_frame, text="Filter Result", font=("Arial", 9, "bold")).pack(anchor=W)
+    filter_result_img = Label(result_frame, bg="white", relief=SUNKEN)
+    filter_result_img.pack()
+
     # Mouse scroll
     def _on_mousewheel(event):
         canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -102,5 +124,9 @@ def create_main_ui(root, open_callback):
         "red": red_label, "red_hist": red_hist_label,
         "green": green_label, "green_hist": green_hist_label,
         "blue": blue_label, "blue_hist": blue_hist_label,
-        "gray": gray_label, "gray_hist": gray_hist_label
+        "gray": gray_label, "gray_hist": gray_hist_label,
+        "filter_select_var": filter_select_var,
+        "filter_select": filter_select,
+        "apply_filter_btn": apply_filter_btn,
+        "filter_result_img": filter_result_img
     }

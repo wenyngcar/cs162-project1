@@ -1,4 +1,4 @@
-from tkinter import Tk, filedialog, Label
+from tkinter import Tk, filedialog, Label, simpledialog
 from PIL import Image, ImageDraw, ImageTk
 import os, io, matplotlib.pyplot as plt
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
@@ -12,6 +12,19 @@ from image_processing import (
 )
 from ui_components import create_main_ui
 from histogram_equalization import histogram_equalization
+from filters.smoothing_filters import apply_average_filter, apply_median_filter
+
+# Registry of available filters and their parameter prompts
+FILTERS = {
+    "Averaging": {
+        "fn": apply_average_filter,
+        "params": [("kernel_size", "int", 3, {"min": 3, "odd": True})],
+    },
+    "Median": {
+        "fn": apply_median_filter,
+        "params": [("kernel_size", "int", 3, {"min": 3, "odd": True})],
+    },
+}
 
 def _thumbnail_photo(image, max_size):
     """Return a PhotoImage from a PIL image resized to fit within max_size (w, h)."""
@@ -114,6 +127,8 @@ def open_pcx(widgets):
         _set_widget_image(widgets, "gray", _thumbnail_photo(gray_img, (400, 400)))
         gray_hist_img = _render_grayscale_histogram(gray_img)
         _set_widget_image(widgets, "gray_hist", _thumbnail_photo(gray_hist_img, (400, 400)))
+        # Store grayscale image for later operations
+        widgets["gray_image_obj"] = gray_img
 
         # Negative Image
         neg_img = create_negative_image(gray_img)
@@ -174,6 +189,80 @@ def main():
         if isinstance(w, Label) or w.cget("text") == "Open PCX File":
             w.configure(command=lambda: open_pcx(widgets))
             break
+
+    # Populate filter dropdown and wire generic handler
+    def _populate_filter_menu():
+        select_widget = widgets.get("filter_select")
+        var = widgets.get("filter_select_var")
+        if not select_widget or not var:
+            return
+        menu = select_widget["menu"]
+        menu.delete(0, "end")
+        names = list(FILTERS.keys())
+        default = names[0] if names else ""
+        var.set(default)
+        for name in names:
+            menu.add_command(label=name, command=lambda n=name: var.set(n))
+
+    def _prompt_params(params_spec):
+        values = {}
+        for name, kind, default, rules in params_spec:
+            if kind == "int":
+                minvalue = rules.get("min") if rules else None
+                maxvalue = rules.get("max") if rules else None
+                val = simpledialog.askinteger(
+                    "Parameter",
+                    f"Enter {name}:",
+                    initialvalue=default,
+                    minvalue=minvalue,
+                    maxvalue=maxvalue,
+                )
+                if val is None:
+                    return None
+                if rules and rules.get("odd") and val % 2 == 0:
+                    widgets["status"].config(text=f"{name} must be odd.", fg="red")
+                    return None
+            elif kind == "float":
+                minvalue = rules.get("min") if rules else None
+                maxvalue = rules.get("max") if rules else None
+                val = simpledialog.askfloat(
+                    "Parameter",
+                    f"Enter {name}:",
+                    initialvalue=default,
+                    minvalue=minvalue,
+                    maxvalue=maxvalue,
+                )
+                if val is None:
+                    return None
+            else:
+                val = default
+            values[name] = val
+        return values
+
+    def _apply_selected_filter():
+        src = widgets.get("gray_image_obj")
+        if src is None:
+            widgets["status"].config(text="Load an image first.", fg="red")
+            return
+        var = widgets.get("filter_select_var")
+        choice = var.get() if var else None
+        spec = FILTERS.get(choice)
+        if not spec:
+            widgets["status"].config(text="Select a filter.", fg="red")
+            return
+        params = _prompt_params(spec.get("params", []))
+        if params is None:
+            return
+        try:
+            out = spec["fn"](src, **params)
+            _set_widget_image(widgets, "filter_result_img", _thumbnail_photo(out, (400, 400)))
+            widgets["status"].config(text=f"Applied {choice}", fg="green")
+        except Exception as ex:
+            widgets["status"].config(text=f"Error: {ex}", fg="red")
+
+    _populate_filter_menu()
+    if "apply_filter_btn" in widgets:
+        widgets["apply_filter_btn"].configure(command=_apply_selected_filter)
 
     root.mainloop()
 
