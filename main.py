@@ -40,7 +40,7 @@ FILTERS = {
     "Highboost": {
         "fn": highboost_filtering,
         "params": [
-            ("boost_factor", "float", 2.0, {"min": 1.0, "max": 5.0}),
+            ("boost_factor", "float", 2.0, {"min": 1.0, "max": 3}),
             ("kernel_size", "int", 3, {"min": 3, "odd": True}),
         ],
     },

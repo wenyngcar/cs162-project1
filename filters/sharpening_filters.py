@@ -79,7 +79,6 @@ def highboost_filtering(image: Image.Image, boost_factor: float = 2.0, kernel_si
             blurred[y, x] = window.mean()
     
     # Highboost: g(x,y) = A * f(x,y) - (A-1) * f_blur(x,y)
-    # where A is the boost factor (typically 1.5 to 2.5)
     result = boost_factor * img_np - (boost_factor - 1.0) * blurred
     
     result = np.clip(result, 0, 255).astype(np.uint8)
