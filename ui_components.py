@@ -87,7 +87,6 @@ def create_main_ui(root, open_callback):
     filters_frame = Frame(scrollable_frame)
     filters_frame.pack(pady=10, fill=X)
 
-    from tkinter import StringVar, OptionMenu
     selector_row = Frame(filters_frame)
     selector_row.pack(anchor=W, pady=2)
     Label(selector_row, text="Filter:").pack(side=LEFT, padx=(0, 6))
