@@ -1,9 +1,4 @@
 .venv
+/__pycache__
 
-# Python bytecode/cache
-__pycache__/
-**/__pycache__/
-*.py[cod]
-
-# macOS metadata
 .DS_Store
