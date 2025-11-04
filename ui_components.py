@@ -2,9 +2,17 @@ from tkinter import *
 
 def create_main_ui(root, open_callback):
     """Builds all UI elements and returns dictionary of widgets."""
-    Button(root, text="Open PCX File", command=open_callback,
-           bg="#4CAF50", fg="white", font=("Arial", 12, "bold"),
-           padx=20, pady=5).pack(pady=10)
+    open_btn = Button(
+        root,
+        text="Open PCX File",
+        command=open_callback,
+        bg="#4CAF50",
+        fg="white",
+        font=("Arial", 12, "bold"),
+        padx=20,
+        pady=5
+    )
+    open_btn.pack(pady=10)
 
     status_label = Label(root, text="No file loaded", fg="gray")
     status_label.pack()
@@ -61,7 +69,7 @@ def create_main_ui(root, open_callback):
     blue_btn.pack(side=LEFT, padx=5)
 
     # Grayscale + histogram
-    Label(scrollable_frame, text="Grayscale Image:", font=("Arial", 11, "bold")).pack(anchor=W)
+    Label(scrollable_frame, text="Point Processing Options", font=("Arial", 11, "bold")).pack(anchor=W)
     gray_frame = Frame(scrollable_frame)
     gray_frame.pack(pady=10)
     gray_label = Label(gray_frame, bg="white", relief=SUNKEN)
@@ -102,6 +110,7 @@ def create_main_ui(root, open_callback):
     canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
     return {
+        "open_btn": open_btn,     
         "status": status_label,
         "header": header_text,
         "original_img": original_img_label,
@@ -111,7 +120,8 @@ def create_main_ui(root, open_callback):
         "red_btn": red_btn,
         "green_btn": green_btn,
         "blue_btn": blue_btn,
-        "gray": gray_label, "gray_hist": gray_hist_label,
+        "gray": gray_label,
+        "gray_hist": gray_hist_label,
         "point_processing_frame": point_processing_frame,
         "filter_select_var": filter_select_var,
         "filter_select": filter_select,

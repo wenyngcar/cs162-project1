@@ -1,354 +1,60 @@
-from tkinter import Tk, filedialog, Label, simpledialog, Toplevel
-from PIL import Image, ImageDraw, ImageTk
-import os, io, matplotlib.pyplot as plt
-from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
-from image_processing import (
-    create_grayscale_image,
-    create_negative_image,
-    create_gamma_image,
-    create_rgb_channel_images,
-    create_histogram,
-    create_threshold_image,
-)
+from tkinter import Tk, simpledialog
 from ui_components import create_main_ui
-from histogram_equalization import histogram_equalization
-from filters.smoothing_filters import apply_average_filter, apply_median_filter
-from filters.sharpening_filters import (
-    highpass_filtering_with_laplacian_operator,
-    unsharp_masking,
-    highboost_filtering,
-)
-from filters.gradient import gradient_sobel
-
-# Registry of available filters and their parameter prompts
-FILTERS = {
-    "Averaging": {
-        "fn": apply_average_filter,
-        "params": [("kernel_size", "int", 3, {"min": 3, "odd": True})],
-    },
-    "Median": {
-        "fn": apply_median_filter,
-        "params": [("kernel_size", "int", 3, {"min": 3, "odd": True})],
-    },
-    "Laplacian (Highpass)": {
-        "fn": highpass_filtering_with_laplacian_operator,
-        "params": [],  # No parameters needed
-    },
-    "Unsharp Masking": {
-        "fn": unsharp_masking,
-        "params": [("kernel_size", "int", 3, {"min": 3, "odd": True})],
-    },
-    "Highboost": {
-        "fn": highboost_filtering,
-        "params": [
-            ("boost_factor", "float", 2.0, {"min": 1.0, "max": 3}),
-            ("kernel_size", "int", 3, {"min": 3, "odd": True}),
-        ],
-    },
-    "Gradient (Sobel)": {
-        "fn": gradient_sobel,
-        "params": [],  # No parameters needed
-    },
-}
-
-def _thumbnail_photo(image, max_size):
-    """Return a PhotoImage from a PIL image resized to fit within max_size (w, h)."""
-    copy = image.copy()
-    copy.thumbnail(max_size)
-    return ImageTk.PhotoImage(copy)
-
-
-def _set_widget_image(widgets, key, photo):
-    """Assign a Tk PhotoImage to the widget referenced by key and keep a ref."""
-    widgets[key].config(image=photo)
-    widgets[key].image = photo
-
-
-def _render_palette_preview(palette, cols=16, swatch=20):
-    """Build a small palette preview image from an RGB palette list."""
-    width = cols * swatch
-    rows = max(1, (len(palette) + cols - 1) // cols)
-    height = rows * swatch
-    pal_img = Image.new('RGB', (width, height), 'white')
-    draw = ImageDraw.Draw(pal_img)
-    for i, color in enumerate(palette):
-        x, y = (i % cols) * swatch, (i // cols) * swatch
-        draw.rectangle([x, y, x + swatch - 1, y + swatch - 1], fill=color, outline='gray')
-    return pal_img
-
-
-def _render_grayscale_histogram(gray_img):
-    """Create a PIL image of the grayscale histogram for display."""
-    gray_hist = gray_img.histogram()
-    plt.figure(figsize=(4, 3))
-    plt.bar(range(256), gray_hist, color='gray')
-    plt.tight_layout()
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close()
-    buf.seek(0)
-    return Image.open(buf)
-
-def open_pcx(widgets):
-    filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
-    if not filepath:
-        return
-    try:
-        header = read_pcx_header(filepath)
-        if header['BitsPerPixel'] != 8 or header['NPlanes'] != 1:
-            raise ValueError("Only 8-bit single-plane PCX files supported.")
-        palette = read_pcx_palette(filepath)
-        pixels = decompress_rle(filepath)
-
-        width, height = header['Width'], header['Height']
-        img = Image.new('RGB', (width, height))
-        img.putdata([palette[p] for p in pixels[:width * height]])
-
-        # Header text
-        info = [f"{k}: {v}" for k, v in header.items()]
-        widgets["header"].delete(1.0, "end")
-        widgets["header"].insert(1.0, '\n'.join(info))
-        
-        # Original Image (clickable for RGB values)
-        original_img = img.copy()
-        original_photo = _thumbnail_photo(original_img, (400, 400))
-        _set_widget_image(widgets, "original_img", original_photo)
-
-        scale_x = original_img.width / original_photo.width()
-        scale_y = original_img.height / original_photo.height()
-
-        def show_rgb_values(event):
-            x = int(event.x * scale_x)
-            y = int(event.y * scale_y)
-            if 0 <= x < original_img.width and 0 <= y < original_img.height:
-                r, g, b = original_img.getpixel((x, y))
-                widgets["rgb_info"].config(
-                    text=f"Position: ({x}, {y}) | RGB: ({r}, {g}, {b}) | R={r}, G={g}, B={b}"
-                )
-            else:
-                widgets["rgb_info"].config(text="Click inside the image to see RGB values")
-
-        widgets["original_img"].bind("<Button-1>", show_rgb_values)
-
-        # Palette preview
-        pal_img = _render_palette_preview(palette)
-        _set_widget_image(widgets, "palette", _thumbnail_photo(pal_img, (400, 400)))
-
-        # Main decompressed image
-        _set_widget_image(widgets, "img", _thumbnail_photo(img, (400, 400)))
-
-        # RGB channels and their histograms
-        r_img, g_img, b_img, (r_channel, g_channel, b_channel) = create_rgb_channel_images(img)
-        r_hist = create_histogram(r_channel, 'red')
-        g_hist = create_histogram(g_channel, 'green')
-        b_hist = create_histogram(b_channel, 'blue')
-
-        def show_channel_window(channel_name, channel_img, hist_img):
-            win = Toplevel()
-            win.title(f"{channel_name} Channel and Histogram")
-
-            img_label = Label(win, text=f"{channel_name} Channel Image", font=("Arial", 11, "bold"))
-            img_label.pack()
-            channel_photo = ImageTk.PhotoImage(channel_img.resize((300, 300)))
-            lbl1 = Label(win, image=channel_photo)
-            lbl1.image = channel_photo
-            lbl1.pack(pady=5)
-
-            hist_label = Label(win, text=f"{channel_name} Channel Histogram", font=("Arial", 11, "bold"))
-            hist_label.pack()
-            hist_photo = ImageTk.PhotoImage(hist_img.resize((300, 200)))
-            lbl2 = Label(win, image=hist_photo)
-            lbl2.image = hist_photo
-            lbl2.pack(pady=5)
-
-        widgets["red_btn"].configure(command=lambda: show_channel_window("Red", r_img, r_hist))
-        widgets["green_btn"].configure(command=lambda: show_channel_window("Green", g_img, g_hist))
-        widgets["blue_btn"].configure(command=lambda: show_channel_window("Blue", b_img, b_hist))
-
-        # Grayscale view and histogram
-        gray_img = create_grayscale_image(img)
-        _set_widget_image(widgets, "gray", _thumbnail_photo(gray_img, (400, 400)))
-        gray_hist_img = _render_grayscale_histogram(gray_img)
-        _set_widget_image(widgets, "gray_hist", _thumbnail_photo(gray_hist_img, (400, 400)))
-        # Store grayscale image for later operations
-        widgets["gray_image_obj"] = gray_img
-        
-        # --- Buttons for Thresholding and Gamma (Power-law) ---
-        def show_threshold_window():
-            win = Toplevel()
-            win.title("Manual Thresholding")
-            gray_img = widgets.get("gray_image_obj")
-            if gray_img is None:
-                widgets["status"].config(text="No grayscale image available.", fg="red")
-                win.destroy()
-                return
-
-            bw_img = create_threshold_image(gray_img)
-            if bw_img:
-                photo = ImageTk.PhotoImage(bw_img.resize((400, 400)))
-                lbl = Label(win, image=photo)
-                lbl.image = photo
-                lbl.pack(pady=10)
-
-        def show_gamma_window():
-            win = Toplevel()
-            win.title("Power-Law (Gamma) Transformation")
-            gray_img = widgets.get("gray_image_obj")
-            if gray_img is None:
-                widgets["status"].config(text="No grayscale image available.", fg="red")
-                win.destroy()
-                return
-
-            gamma_img = create_gamma_image(gray_img)
-            if gamma_img:
-                photo = ImageTk.PhotoImage(gamma_img.resize((400, 400)))
-                lbl = Label(win, image=photo)
-                lbl.image = photo
-                lbl.pack(pady=10)
-
-        # Add buttons to trigger those popups
-        from tkinter import Button
-        threshold_btn = Button(
-            widgets["point_processing_frame"], 
-            text="Manual Thresholding", 
-            command=show_threshold_window
-        )
-        threshold_btn.pack(pady=5)
-
-        gamma_btn = Button(
-            widgets["point_processing_frame"], 
-            text="Power-Law (Gamma) Transformation", 
-            command=show_gamma_window
-        )
-        gamma_btn.pack(pady=5)
-
-        # Negative Image
-        neg_img = create_negative_image(gray_img)
-        if "negative" not in widgets:
-            neg_label_title = Label(widgets["point_processing_frame"], text="Negative Image:", font=("Arial", 11, "bold"))
-            neg_label_title.pack(anchor="w")
-            neg_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
-            neg_label.pack(pady=10)
-            widgets["negative"] = neg_label
-        _set_widget_image(widgets, "negative", _thumbnail_photo(neg_img, (400, 400)))
-
-        # --- Histogram Equalization ---
-        eq_img, eq_hist_img = histogram_equalization(gray_img)
-        if "hist_eq" not in widgets:
-            eq_label_title = Label(widgets["point_processing_frame"], text="Histogram Equalization:", font=("Arial", 11, "bold"))
-            eq_label_title.pack(anchor="w")
-            eq_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
-            eq_label.pack(pady=10)
-            widgets["hist_eq"] = eq_label
-            
-            eq_hist_label_title = Label(widgets["point_processing_frame"], text="Histogram Comparison:", font=("Arial", 11, "bold"))
-            eq_hist_label_title.pack(anchor="w")
-            eq_hist_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
-            eq_hist_label.pack(pady=10)
-            widgets["hist_eq_comparison"] = eq_hist_label
-        
-        _set_widget_image(widgets, "hist_eq", _thumbnail_photo(eq_img, (400, 400)))
-        _set_widget_image(widgets, "hist_eq_comparison", _thumbnail_photo(eq_hist_img, (600, 300)))
-
-        widgets["status"].config(text=f"Loaded: {os.path.basename(filepath)}", fg="green")
-
-    except Exception as e:
-        widgets["status"].config(text=f"Error: {e}", fg="red")
-        import traceback
-        traceback.print_exc()
-    
+from handlers.pcx_loader import open_pcx
+from utils.filter_registry import FILTERS
 
 def main():
     root = Tk()
     root.title("PCX File Reader with RGB Histograms")
     root.geometry("1000x800")
 
-    widgets = create_main_ui(root, lambda: open_pcx(widgets=None))
-    # Late binding fix:
-    widgets["status"].after(100, lambda: widgets.update({"open": lambda: open_pcx(widgets)}))
-    widgets["status"].after(100, lambda: root.bind("<Control-o>", lambda e: open_pcx(widgets)))
+    widgets = create_main_ui(root, None)
+    widgets["open_btn"].config(command=lambda: open_pcx(widgets))
 
-    # Rewire the open button to pass widgets
-    for w in root.winfo_children():
-        if isinstance(w, Label) or w.cget("text") == "Open PCX File":
-            w.configure(command=lambda: open_pcx(widgets))
-            break
-
-    # Populate filter dropdown and wire generic handler
-    def _populate_filter_menu():
-        select_widget = widgets.get("filter_select")
-        var = widgets.get("filter_select_var")
-        if not select_widget or not var:
-            return
-        menu = select_widget["menu"]
-        menu.delete(0, "end")
-        names = list(FILTERS.keys())
-        default = names[0] if names else ""
-        var.set(default)
-        for name in names:
-            menu.add_command(label=name, command=lambda n=name: var.set(n))
-
-    def _prompt_params(params_spec):
-        values = {}
-        for name, kind, default, rules in params_spec:
-            if kind == "int":
-                minvalue = rules.get("min") if rules else None
-                maxvalue = rules.get("max") if rules else None
-                val = simpledialog.askinteger(
-                    "Parameter",
-                    f"Enter {name}:",
-                    initialvalue=default,
-                    minvalue=minvalue,
-                    maxvalue=maxvalue,
-                )
-                if val is None:
-                    return None
-                if rules and rules.get("odd") and val % 2 == 0:
-                    widgets["status"].config(text=f"{name} must be odd.", fg="red")
-                    return None
-            elif kind == "float":
-                minvalue = rules.get("min") if rules else None
-                maxvalue = rules.get("max") if rules else None
-                val = simpledialog.askfloat(
-                    "Parameter",
-                    f"Enter {name}:",
-                    initialvalue=default,
-                    minvalue=minvalue,
-                    maxvalue=maxvalue,
-                )
-                if val is None:
-                    return None
+    # ========== FILTER APPLICATION ==========
+    def prompt_params(params_spec):
+        """Prompt user for filter parameters."""
+        params = {}
+        for name, param_type, default, constraints in params_spec:
+            if param_type == "int":
+                val = simpledialog.askinteger("Parameter", f"Enter {name} (default {default}):", initialvalue=default)
+            elif param_type == "float":
+                val = simpledialog.askfloat("Parameter", f"Enter {name} (default {default}):", initialvalue=default)
             else:
                 val = default
-            values[name] = val
-        return values
+            params[name] = val
+        return params
 
-    def _apply_selected_filter():
-        src = widgets.get("gray_image_obj")
-        if src is None:
-            widgets["status"].config(text="Load an image first.", fg="red")
+    def apply_selected_filter():
+        """Apply selected filter to the current image."""
+        if "current_image" not in widgets or widgets["current_image"] is None:
+            widgets["status"].config(text="?? No image loaded. Please open a PCX file first.")
             return
-        var = widgets.get("filter_select_var")
-        choice = var.get() if var else None
-        spec = FILTERS.get(choice)
-        if not spec:
-            widgets["status"].config(text="Select a filter.", fg="red")
+
+        selected_filter = widgets["filter_var"].get()
+        if selected_filter not in FILTERS:
+            widgets["status"].config(text="?? Invalid filter selected.")
             return
-        params = _prompt_params(spec.get("params", []))
-        if params is None:
-            return
+
+        filter_info = FILTERS[selected_filter]
+        params = prompt_params(filter_info.get("params", []))
+
+        # Apply the selected filter
+        filter_fn = filter_info["fn"]
         try:
-            out = spec["fn"](src, **params)
-            _set_widget_image(widgets, "filter_result_img", _thumbnail_photo(out, (400, 400)))
-            widgets["status"].config(text=f"Applied {choice}", fg="green")
-        except Exception as ex:
-            widgets["status"].config(text=f"Error: {ex}", fg="red")
+            filtered_img = filter_fn(widgets["current_image"], **params)
+            widgets["filtered_image"] = filtered_img
+            widgets["status"].config(text=f"? Applied filter: {selected_filter}")
+        except Exception as e:
+            widgets["status"].config(text=f"? Error applying filter: {e}")
 
-    _populate_filter_menu()
+    # Connect filter apply button
     if "apply_filter_btn" in widgets:
-        widgets["apply_filter_btn"].configure(command=_apply_selected_filter)
+        widgets["apply_filter_btn"].configure(command=apply_selected_filter)
 
+    # Run main loop
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
