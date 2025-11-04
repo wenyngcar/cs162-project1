@@ -2,10 +2,11 @@ from tkinter import Tk, filedialog, Label
 from PIL import Image, ImageDraw, ImageTk
 import os, io, matplotlib.pyplot as plt
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
-from image_processing import create_grayscale_image, create_negative_image
+from image_processing import create_grayscale_image, create_negative_image, create_gamma_image, create_rgb_channel_images, create_histogram
 from ui_components import create_main_ui
 from image_processing import create_threshold_image
 from histogram_equalization import histogram_equalization
+
 def open_pcx(widgets):
     filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
     if not filepath:
@@ -75,7 +76,6 @@ def open_pcx(widgets):
         widgets["img"].image = photo
 
         # RGB Channels
-        from image_processing import create_rgb_channel_images, create_histogram
         r_img, g_img, b_img, (r_channel, g_channel, b_channel) = create_rgb_channel_images(img)
         
         # Display RGB channel images
@@ -132,7 +132,6 @@ def open_pcx(widgets):
 
         # Create a new label for displaying the negative image
         if "negative" not in widgets:
-            from tkinter import Label
             neg_label_title = Label(widgets["gray"].master.master, text="Negative Image:", font=("Arial", 11, "bold"))
             neg_label_title.pack(anchor="w")
             neg_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
@@ -148,7 +147,6 @@ def open_pcx(widgets):
             bw_photo = ImageTk.PhotoImage(bw_disp)
 
             if "bw" not in widgets:
-                from tkinter import Label
                 bw_label_title = Label(widgets["gray"].master.master, text="Black/White (Manual Thresholding):", font=("Arial", 11, "bold"))
                 bw_label_title.pack(anchor="w")
                 bw_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
@@ -160,7 +158,6 @@ def open_pcx(widgets):
 
 
 # --- Power-Law (Gamma) Transformation ---
-        from image_processing import create_gamma_image
         gamma_img = create_gamma_image(gray_img)
         if gamma_img:
             gamma_disp = gamma_img.copy()
