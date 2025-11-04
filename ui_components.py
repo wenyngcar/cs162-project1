@@ -29,6 +29,13 @@ def create_main_ui(root, open_callback):
     header_text = Text(scrollable_frame, width=70, height=10, font=("Courier", 9))
     header_text.pack(pady=5)
 
+    # Original Image (clickable for RGB values)
+    Label(scrollable_frame, text="Original Image (click to see RGB values):", font=("Arial", 11, "bold")).pack(anchor=W)
+    original_img_label = Label(scrollable_frame, bg="white", relief=SUNKEN, cursor="crosshair")
+    original_img_label.pack(pady=5)
+    rgb_info_label = Label(scrollable_frame, text="", font=("Courier", 10), fg="blue")
+    rgb_info_label.pack()
+
     # Palette
     Label(scrollable_frame, text="Color Palette:", font=("Arial", 11, "bold")).pack(anchor=W)
     palette_label = Label(scrollable_frame, bg="white", relief=SUNKEN)
@@ -56,6 +63,8 @@ def create_main_ui(root, open_callback):
     return {
         "status": status_label,
         "header": header_text,
+        "original_img": original_img_label,
+        "rgb_info": rgb_info_label,
         "palette": palette_label,
         "img": img_label,
         "gray": gray_label, "gray_hist": gray_hist_label
