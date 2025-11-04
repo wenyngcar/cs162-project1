@@ -189,14 +189,30 @@ def open_pcx(widgets):
                 widgets["gamma"] = gamma_label
             _set_widget_image(widgets, "gamma", _thumbnail_photo(gamma_img, (400, 400)))
 
+        # --- Histogram Equalization ---
+        eq_img, eq_hist_img = histogram_equalization(gray_img)
+        if "hist_eq" not in widgets:
+            eq_label_title = Label(widgets["gray"].master.master, text="Histogram Equalization:", font=("Arial", 11, "bold"))
+            eq_label_title.pack(anchor="w")
+            eq_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+            eq_label.pack(pady=10)
+            widgets["hist_eq"] = eq_label
+            
+            eq_hist_label_title = Label(widgets["gray"].master.master, text="Histogram Comparison:", font=("Arial", 11, "bold"))
+            eq_hist_label_title.pack(anchor="w")
+            eq_hist_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+            eq_hist_label.pack(pady=10)
+            widgets["hist_eq_comparison"] = eq_hist_label
+        
+        _set_widget_image(widgets, "hist_eq", _thumbnail_photo(eq_img, (400, 400)))
+        _set_widget_image(widgets, "hist_eq_comparison", _thumbnail_photo(eq_hist_img, (600, 300)))
+
         widgets["status"].config(text=f"Loaded: {os.path.basename(filepath)}", fg="green")
 
     except Exception as e:
         widgets["status"].config(text=f"Error: {e}", fg="red")
         import traceback
         traceback.print_exc()
-# --- Histogram Equalization ---
-    histogram_equalization(filepath)
     
 
 def main():
