@@ -87,7 +87,12 @@ def create_main_ui(root, open_callback):
     gray_hist_label = Label(gray_frame, bg="white", relief=SUNKEN)
     gray_hist_label.pack(side=LEFT, padx=10)
 
-    # Smoothing Filters section (dropdown + single apply + single result)
+    # Container for point processing methods (negative, threshold, gamma, histogram equalization)
+    # This will be populated dynamically when an image is loaded
+    point_processing_frame = Frame(scrollable_frame)
+    point_processing_frame.pack(pady=10, fill=X)
+
+    # Smoothing Filters section (dropdown + single apply + single result) - AT THE BOTTOM
     Label(scrollable_frame, text="Smoothing Filters:", font=("Arial", 11, "bold")).pack(anchor=W)
     filters_frame = Frame(scrollable_frame)
     filters_frame.pack(pady=10, fill=X)
@@ -125,6 +130,7 @@ def create_main_ui(root, open_callback):
         "green": green_label, "green_hist": green_hist_label,
         "blue": blue_label, "blue_hist": blue_hist_label,
         "gray": gray_label, "gray_hist": gray_hist_label,
+        "point_processing_frame": point_processing_frame,
         "filter_select_var": filter_select_var,
         "filter_select": filter_select,
         "apply_filter_btn": apply_filter_btn,

@@ -1,19 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
+import io
 
-def histogram_equalization(image_path):
-    header = read_pcx_header(image_path)
-    palette = read_pcx_palette(image_path)
-    pixels = decompress_rle(image_path)
-    
-    width, height = header['Width'], header['Height']
-    
-    # Create grayscale image
-    img = Image.new('RGB', (width, height))
-    img.putdata([palette[p] for p in pixels[:width * height]])
-    gray_img = img.convert('L')
+def histogram_equalization(gray_img: Image.Image) -> tuple[Image.Image, Image.Image]:
+    """
+    Apply histogram equalization to a grayscale image.
+    Returns: (equalized_image, histogram_comparison_image)
+    """
     img_array = np.array(gray_img)
     
     # Compute histogram
@@ -26,36 +20,33 @@ def histogram_equalization(image_path):
     
     # Create equalized image
     equalized_array = cdf_normalized[img_array]
+    equalized_img = Image.fromarray(equalized_array, mode='L')
     
     # Calculate equalized histogram
     hist_eq = np.bincount(equalized_array.ravel(), minlength=256)
     
-    # Display results
-    plt.figure(figsize=(12, 8))
+    # Create histogram comparison image
+    plt.figure(figsize=(8, 4))
     
-    # Original image and histogram
-    plt.subplot(2, 2, 1)
-    plt.imshow(img_array, cmap='gray')
-    plt.title('Original Image')
-    plt.axis('off')
-    
-    plt.subplot(2, 2, 2)
+    plt.subplot(1, 2, 1)
     plt.bar(range(256), hist, color='gray', width=1.0)
     plt.title('Original Histogram')
     plt.xlabel('Intensity')
     plt.ylabel('Frequency')
     
-    # Equalized image and histogram
-    plt.subplot(2, 2, 3)
-    plt.imshow(equalized_array, cmap='gray')
-    plt.title('Equalized Image')
-    plt.axis('off')
-    
-    plt.subplot(2, 2, 4)
+    plt.subplot(1, 2, 2)
     plt.bar(range(256), hist_eq, color='green', width=1.0)
     plt.title('Equalized Histogram')
     plt.xlabel('Intensity')
     plt.ylabel('Frequency')
     
     plt.tight_layout()
-    plt.show()
+    
+    # Convert plot to PIL Image
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    hist_img = Image.open(buf)
+    
+    return equalized_img, hist_img
