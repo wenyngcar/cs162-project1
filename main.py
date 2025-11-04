@@ -172,6 +172,55 @@ def open_pcx(widgets):
         _set_widget_image(widgets, "gray_hist", _thumbnail_photo(gray_hist_img, (400, 400)))
         # Store grayscale image for later operations
         widgets["gray_image_obj"] = gray_img
+        
+        # --- Buttons for Thresholding and Gamma (Power-law) ---
+        def show_threshold_window():
+            win = Toplevel()
+            win.title("Manual Thresholding")
+            gray_img = widgets.get("gray_image_obj")
+            if gray_img is None:
+                widgets["status"].config(text="No grayscale image available.", fg="red")
+                win.destroy()
+                return
+
+            bw_img = create_threshold_image(gray_img)
+            if bw_img:
+                photo = ImageTk.PhotoImage(bw_img.resize((400, 400)))
+                lbl = Label(win, image=photo)
+                lbl.image = photo
+                lbl.pack(pady=10)
+
+        def show_gamma_window():
+            win = Toplevel()
+            win.title("Power-Law (Gamma) Transformation")
+            gray_img = widgets.get("gray_image_obj")
+            if gray_img is None:
+                widgets["status"].config(text="No grayscale image available.", fg="red")
+                win.destroy()
+                return
+
+            gamma_img = create_gamma_image(gray_img)
+            if gamma_img:
+                photo = ImageTk.PhotoImage(gamma_img.resize((400, 400)))
+                lbl = Label(win, image=photo)
+                lbl.image = photo
+                lbl.pack(pady=10)
+
+        # Add buttons to trigger those popups
+        from tkinter import Button
+        threshold_btn = Button(
+            widgets["point_processing_frame"], 
+            text="Manual Thresholding", 
+            command=show_threshold_window
+        )
+        threshold_btn.pack(pady=5)
+
+        gamma_btn = Button(
+            widgets["point_processing_frame"], 
+            text="Power-Law (Gamma) Transformation", 
+            command=show_gamma_window
+        )
+        gamma_btn.pack(pady=5)
 
         # Negative Image
         neg_img = create_negative_image(gray_img)
@@ -182,28 +231,6 @@ def open_pcx(widgets):
             neg_label.pack(pady=10)
             widgets["negative"] = neg_label
         _set_widget_image(widgets, "negative", _thumbnail_photo(neg_img, (400, 400)))
-
-        # --- Black/White via Manual Thresholding ---
-        bw_img = create_threshold_image(gray_img)
-        if bw_img:
-            if "bw" not in widgets:
-                bw_label_title = Label(widgets["point_processing_frame"], text="Black/White (Manual Thresholding):", font=("Arial", 11, "bold"))
-                bw_label_title.pack(anchor="w")
-                bw_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
-                bw_label.pack(pady=10)
-                widgets["bw"] = bw_label
-            _set_widget_image(widgets, "bw", _thumbnail_photo(bw_img, (400, 400)))
-
-        # --- Power-Law (Gamma) Transformation ---
-        gamma_img = create_gamma_image(gray_img)
-        if gamma_img:
-            if "gamma" not in widgets:
-                gamma_label_title = Label(widgets["point_processing_frame"], text="Power-Law (Gamma) Transformation:", font=("Arial", 11, "bold"))
-                gamma_label_title.pack(anchor="w")
-                gamma_label = Label(widgets["point_processing_frame"], bg="white", relief="sunken")
-                gamma_label.pack(pady=10)
-                widgets["gamma"] = gamma_label
-            _set_widget_image(widgets, "gamma", _thumbnail_photo(gamma_img, (400, 400)))
 
         # --- Histogram Equalization ---
         eq_img, eq_hist_img = histogram_equalization(gray_img)
