@@ -13,6 +13,11 @@ from image_processing import (
 from ui_components import create_main_ui
 from histogram_equalization import histogram_equalization
 from filters.smoothing_filters import apply_average_filter, apply_median_filter
+from filters.sharpening_filters import (
+    highpass_filtering_with_laplacian_operator,
+    unsharp_masking,
+    highboost_filtering,
+)
 
 # Registry of available filters and their parameter prompts
 FILTERS = {
@@ -23,6 +28,21 @@ FILTERS = {
     "Median": {
         "fn": apply_median_filter,
         "params": [("kernel_size", "int", 3, {"min": 3, "odd": True})],
+    },
+    "Laplacian (Highpass)": {
+        "fn": highpass_filtering_with_laplacian_operator,
+        "params": [],  # No parameters needed
+    },
+    "Unsharp Masking": {
+        "fn": unsharp_masking,
+        "params": [("kernel_size", "int", 3, {"min": 3, "odd": True})],
+    },
+    "Highboost": {
+        "fn": highboost_filtering,
+        "params": [
+            ("boost_factor", "float", 2.0, {"min": 1.0, "max": 5.0}),
+            ("kernel_size", "int", 3, {"min": 3, "odd": True}),
+        ],
     },
 }
 
