@@ -1,11 +1,11 @@
 from tkinter import Tk, filedialog, Label
 from PIL import Image, ImageDraw, ImageTk
 import os, io, matplotlib.pyplot as plt
-
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
-from image_processing import create_rgb_channel_images, create_histogram, create_grayscale_image
+from image_processing import create_grayscale_image, create_negative_image
 from ui_components import create_main_ui
-
+from image_processing import create_threshold_image
+from histogram_equalization import histogram_equalization
 def open_pcx(widgets):
     filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
     if not filepath:
@@ -44,24 +44,6 @@ def open_pcx(widgets):
         widgets["img"].config(image=photo)
         widgets["img"].image = photo
 
-        # RGB + histograms
-        r_img, g_img, b_img, (r_ch, g_ch, b_ch) = create_rgb_channel_images(img)
-        for color, ch_img, ch_gray in zip(
-            ["r", "g", "b"],
-            [r_img, g_img, b_img],
-            [r_ch, g_ch, b_ch]
-        ):
-            ch_img.thumbnail((250, 250))
-            photo = ImageTk.PhotoImage(ch_img)
-            widgets[color].config(image=photo)
-            widgets[color].image = photo
-
-            hist_img = create_histogram(ch_gray, color)
-            hist_img.thumbnail((250, 250))
-            hist_photo = ImageTk.PhotoImage(hist_img)
-            widgets[f"{color}_hist"].config(image=hist_photo)
-            widgets[f"{color}_hist"].image = hist_photo
-
         # Grayscale + histogram
         gray_img = create_grayscale_image(img)
         gray_disp = gray_img.copy()
@@ -69,6 +51,63 @@ def open_pcx(widgets):
         gray_photo = ImageTk.PhotoImage(gray_disp)
         widgets["gray"].config(image=gray_photo)
         widgets["gray"].image = gray_photo
+
+        # Negative Image
+        neg_img = create_negative_image(gray_img)
+        neg_disp = neg_img.copy()
+        neg_disp.thumbnail((400, 400))
+        neg_photo = ImageTk.PhotoImage(neg_disp)
+
+        # Create a new label for displaying the negative image
+        if "negative" not in widgets:
+            from tkinter import Label
+            neg_label_title = Label(widgets["gray"].master.master, text="Negative Image:", font=("Arial", 11, "bold"))
+            neg_label_title.pack(anchor="w")
+            neg_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+            neg_label.pack(pady=10)
+            widgets["negative"] = neg_label
+        
+
+        # --- Black/White via Manual Thresholding ---
+        bw_img = create_threshold_image(gray_img)
+        if bw_img:
+            bw_disp = bw_img.copy()
+            bw_disp.thumbnail((400, 400))
+            bw_photo = ImageTk.PhotoImage(bw_disp)
+
+            if "bw" not in widgets:
+                from tkinter import Label
+                bw_label_title = Label(widgets["gray"].master.master, text="Black/White (Manual Thresholding):", font=("Arial", 11, "bold"))
+                bw_label_title.pack(anchor="w")
+                bw_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+                bw_label.pack(pady=10)
+                widgets["bw"] = bw_label
+
+            widgets["bw"].config(image=bw_photo)
+            widgets["bw"].image = bw_photo
+
+
+# --- Power-Law (Gamma) Transformation ---
+        from image_processing import create_gamma_image
+        gamma_img = create_gamma_image(gray_img)
+        if gamma_img:
+            gamma_disp = gamma_img.copy()
+            gamma_disp.thumbnail((400, 400))
+            gamma_photo = ImageTk.PhotoImage(gamma_disp)
+
+            if "gamma" not in widgets:
+                gamma_label_title = Label(widgets["gray"].master.master, text="Power-Law (Gamma) Transformation:", font=("Arial", 11, "bold"))
+                gamma_label_title.pack(anchor="w")
+                gamma_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
+                gamma_label.pack(pady=10)
+                widgets["gamma"] = gamma_label
+
+            widgets["gamma"].config(image=gamma_photo)
+            widgets["gamma"].image = gamma_photo
+
+
+        widgets["negative"].config(image=neg_photo)
+        widgets["negative"].image = neg_photo
 
         gray_hist = gray_img.histogram()
         plt.figure(figsize=(4, 3))
@@ -90,6 +129,9 @@ def open_pcx(widgets):
         widgets["status"].config(text=f"Error: {e}", fg="red")
         import traceback
         traceback.print_exc()
+# --- Histogram Equalization ---
+    histogram_equalization(filepath)
+    
 
 def main():
     root = Tk()
