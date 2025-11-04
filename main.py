@@ -56,8 +56,6 @@ def open_pcx(widgets):
         # Bind click event
         widgets["original_img"].bind("<Button-1>", show_rgb_values)
         
-        # Image
-
         # Palette preview
         cols, swatch = 16, 20
         pal_img = Image.new('RGB', (cols * swatch, (len(palette)//cols) * swatch), 'white')
@@ -75,6 +73,48 @@ def open_pcx(widgets):
         photo = ImageTk.PhotoImage(img_disp)
         widgets["img"].config(image=photo)
         widgets["img"].image = photo
+
+        # RGB Channels
+        from image_processing import create_rgb_channel_images, create_histogram
+        r_img, g_img, b_img, (r_channel, g_channel, b_channel) = create_rgb_channel_images(img)
+        
+        # Display RGB channel images
+        r_disp = r_img.copy()
+        r_disp.thumbnail((250, 250))
+        r_photo = ImageTk.PhotoImage(r_disp)
+        widgets["red"].config(image=r_photo)
+        widgets["red"].image = r_photo
+        
+        g_disp = g_img.copy()
+        g_disp.thumbnail((250, 250))
+        g_photo = ImageTk.PhotoImage(g_disp)
+        widgets["green"].config(image=g_photo)
+        widgets["green"].image = g_photo
+        
+        b_disp = b_img.copy()
+        b_disp.thumbnail((250, 250))
+        b_photo = ImageTk.PhotoImage(b_disp)
+        widgets["blue"].config(image=b_photo)
+        widgets["blue"].image = b_photo
+        
+        # Display RGB histograms
+        r_hist_img = create_histogram(r_channel, 'red')
+        r_hist_img.thumbnail((250, 180))
+        r_hist_photo = ImageTk.PhotoImage(r_hist_img)
+        widgets["red_hist"].config(image=r_hist_photo)
+        widgets["red_hist"].image = r_hist_photo
+        
+        g_hist_img = create_histogram(g_channel, 'green')
+        g_hist_img.thumbnail((250, 180))
+        g_hist_photo = ImageTk.PhotoImage(g_hist_img)
+        widgets["green_hist"].config(image=g_hist_photo)
+        widgets["green_hist"].image = g_hist_photo
+        
+        b_hist_img = create_histogram(b_channel, 'blue')
+        b_hist_img.thumbnail((250, 180))
+        b_hist_photo = ImageTk.PhotoImage(b_hist_img)
+        widgets["blue_hist"].config(image=b_hist_photo)
+        widgets["blue_hist"].image = b_hist_photo
 
         # Grayscale + histogram
         gray_img = create_grayscale_image(img)
