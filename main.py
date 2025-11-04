@@ -2,10 +2,54 @@ from tkinter import Tk, filedialog, Label
 from PIL import Image, ImageDraw, ImageTk
 import os, io, matplotlib.pyplot as plt
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
-from image_processing import create_grayscale_image, create_negative_image, create_gamma_image, create_rgb_channel_images, create_histogram
+from image_processing import (
+    create_grayscale_image,
+    create_negative_image,
+    create_gamma_image,
+    create_rgb_channel_images,
+    create_histogram,
+    create_threshold_image,
+)
 from ui_components import create_main_ui
-from image_processing import create_threshold_image
 from histogram_equalization import histogram_equalization
+
+def _thumbnail_photo(image, max_size):
+    """Return a PhotoImage from a PIL image resized to fit within max_size (w, h)."""
+    copy = image.copy()
+    copy.thumbnail(max_size)
+    return ImageTk.PhotoImage(copy)
+
+
+def _set_widget_image(widgets, key, photo):
+    """Assign a Tk PhotoImage to the widget referenced by key and keep a ref."""
+    widgets[key].config(image=photo)
+    widgets[key].image = photo
+
+
+def _render_palette_preview(palette, cols=16, swatch=20):
+    """Build a small palette preview image from an RGB palette list."""
+    width = cols * swatch
+    rows = max(1, (len(palette) + cols - 1) // cols)
+    height = rows * swatch
+    pal_img = Image.new('RGB', (width, height), 'white')
+    draw = ImageDraw.Draw(pal_img)
+    for i, color in enumerate(palette):
+        x, y = (i % cols) * swatch, (i // cols) * swatch
+        draw.rectangle([x, y, x + swatch - 1, y + swatch - 1], fill=color, outline='gray')
+    return pal_img
+
+
+def _render_grayscale_histogram(gray_img):
+    """Create a PIL image of the grayscale histogram for display."""
+    gray_hist = gray_img.histogram()
+    plt.figure(figsize=(4, 3))
+    plt.bar(range(256), gray_hist, color='gray')
+    plt.tight_layout()
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return Image.open(buf)
 
 def open_pcx(widgets):
     filepath = filedialog.askopenfilename(filetypes=[("PCX files", "*.pcx")])
@@ -29,168 +73,81 @@ def open_pcx(widgets):
         
         # Original Image (clickable for RGB values)
         original_img = img.copy()
-        original_img_disp = original_img.copy()
-        original_img_disp.thumbnail((400, 400))
-        original_photo = ImageTk.PhotoImage(original_img_disp)
-        widgets["original_img"].config(image=original_photo)
-        widgets["original_img"].image = original_photo
-        
-        # Calculate scale factor for click coordinates
-        scale_x = original_img.width / original_img_disp.width
-        scale_y = original_img.height / original_img_disp.height
-        
-        # Add click handler to show RGB values
+        original_photo = _thumbnail_photo(original_img, (400, 400))
+        _set_widget_image(widgets, "original_img", original_photo)
+
+        scale_x = original_img.width / original_photo.width()
+        scale_y = original_img.height / original_photo.height()
+
         def show_rgb_values(event):
-            # Convert click coordinates to original image coordinates
             x = int(event.x * scale_x)
             y = int(event.y * scale_y)
-            
-            # Check if coordinates are within bounds
             if 0 <= x < original_img.width and 0 <= y < original_img.height:
-                rgb = original_img.getpixel((x, y))
+                r, g, b = original_img.getpixel((x, y))
                 widgets["rgb_info"].config(
-                    text=f"Position: ({x}, {y}) | RGB: {rgb} | R={rgb[0]}, G={rgb[1]}, B={rgb[2]}"
+                    text=f"Position: ({x}, {y}) | RGB: ({r}, {g}, {b}) | R={r}, G={g}, B={b}"
                 )
             else:
                 widgets["rgb_info"].config(text="Click inside the image to see RGB values")
-        
-        # Bind click event
+
         widgets["original_img"].bind("<Button-1>", show_rgb_values)
-        
+
         # Palette preview
-        cols, swatch = 16, 20
-        pal_img = Image.new('RGB', (cols * swatch, (len(palette)//cols) * swatch), 'white')
-        draw = ImageDraw.Draw(pal_img)
-        for i, color in enumerate(palette):
-            x, y = (i % cols) * swatch, (i // cols) * swatch
-            draw.rectangle([x, y, x + swatch - 1, y + swatch - 1], fill=color, outline='gray')
-        pal_photo = ImageTk.PhotoImage(pal_img)
-        widgets["palette"].config(image=pal_photo)
-        widgets["palette"].image = pal_photo
+        pal_img = _render_palette_preview(palette)
+        _set_widget_image(widgets, "palette", _thumbnail_photo(pal_img, (400, 400)))
 
-        # Main image
-        img_disp = img.copy()
-        img_disp.thumbnail((400, 400))
-        photo = ImageTk.PhotoImage(img_disp)
-        widgets["img"].config(image=photo)
-        widgets["img"].image = photo
+        # Main decompressed image
+        _set_widget_image(widgets, "img", _thumbnail_photo(img, (400, 400)))
 
-        # RGB Channels
+        # RGB channels and their histograms
         r_img, g_img, b_img, (r_channel, g_channel, b_channel) = create_rgb_channel_images(img)
-        
-        # Display RGB channel images
-        r_disp = r_img.copy()
-        r_disp.thumbnail((250, 250))
-        r_photo = ImageTk.PhotoImage(r_disp)
-        widgets["red"].config(image=r_photo)
-        widgets["red"].image = r_photo
-        
-        g_disp = g_img.copy()
-        g_disp.thumbnail((250, 250))
-        g_photo = ImageTk.PhotoImage(g_disp)
-        widgets["green"].config(image=g_photo)
-        widgets["green"].image = g_photo
-        
-        b_disp = b_img.copy()
-        b_disp.thumbnail((250, 250))
-        b_photo = ImageTk.PhotoImage(b_disp)
-        widgets["blue"].config(image=b_photo)
-        widgets["blue"].image = b_photo
-        
-        # Display RGB histograms
-        r_hist_img = create_histogram(r_channel, 'red')
-        r_hist_img.thumbnail((250, 180))
-        r_hist_photo = ImageTk.PhotoImage(r_hist_img)
-        widgets["red_hist"].config(image=r_hist_photo)
-        widgets["red_hist"].image = r_hist_photo
-        
-        g_hist_img = create_histogram(g_channel, 'green')
-        g_hist_img.thumbnail((250, 180))
-        g_hist_photo = ImageTk.PhotoImage(g_hist_img)
-        widgets["green_hist"].config(image=g_hist_photo)
-        widgets["green_hist"].image = g_hist_photo
-        
-        b_hist_img = create_histogram(b_channel, 'blue')
-        b_hist_img.thumbnail((250, 180))
-        b_hist_photo = ImageTk.PhotoImage(b_hist_img)
-        widgets["blue_hist"].config(image=b_hist_photo)
-        widgets["blue_hist"].image = b_hist_photo
+        _set_widget_image(widgets, "red", _thumbnail_photo(r_img, (250, 250)))
+        _set_widget_image(widgets, "green", _thumbnail_photo(g_img, (250, 250)))
+        _set_widget_image(widgets, "blue", _thumbnail_photo(b_img, (250, 250)))
 
-        # Grayscale + histogram
+        _set_widget_image(widgets, "red_hist", _thumbnail_photo(create_histogram(r_channel, 'red'), (250, 180)))
+        _set_widget_image(widgets, "green_hist", _thumbnail_photo(create_histogram(g_channel, 'green'), (250, 180)))
+        _set_widget_image(widgets, "blue_hist", _thumbnail_photo(create_histogram(b_channel, 'blue'), (250, 180)))
+
+        # Grayscale view and histogram
         gray_img = create_grayscale_image(img)
-        gray_disp = gray_img.copy()
-        gray_disp.thumbnail((400, 400))
-        gray_photo = ImageTk.PhotoImage(gray_disp)
-        widgets["gray"].config(image=gray_photo)
-        widgets["gray"].image = gray_photo
+        _set_widget_image(widgets, "gray", _thumbnail_photo(gray_img, (400, 400)))
+        gray_hist_img = _render_grayscale_histogram(gray_img)
+        _set_widget_image(widgets, "gray_hist", _thumbnail_photo(gray_hist_img, (400, 400)))
 
         # Negative Image
         neg_img = create_negative_image(gray_img)
-        neg_disp = neg_img.copy()
-        neg_disp.thumbnail((400, 400))
-        neg_photo = ImageTk.PhotoImage(neg_disp)
-
-        # Create a new label for displaying the negative image
         if "negative" not in widgets:
             neg_label_title = Label(widgets["gray"].master.master, text="Negative Image:", font=("Arial", 11, "bold"))
             neg_label_title.pack(anchor="w")
             neg_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
             neg_label.pack(pady=10)
             widgets["negative"] = neg_label
-        
+        _set_widget_image(widgets, "negative", _thumbnail_photo(neg_img, (400, 400)))
 
         # --- Black/White via Manual Thresholding ---
         bw_img = create_threshold_image(gray_img)
         if bw_img:
-            bw_disp = bw_img.copy()
-            bw_disp.thumbnail((400, 400))
-            bw_photo = ImageTk.PhotoImage(bw_disp)
-
             if "bw" not in widgets:
                 bw_label_title = Label(widgets["gray"].master.master, text="Black/White (Manual Thresholding):", font=("Arial", 11, "bold"))
                 bw_label_title.pack(anchor="w")
                 bw_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
                 bw_label.pack(pady=10)
                 widgets["bw"] = bw_label
+            _set_widget_image(widgets, "bw", _thumbnail_photo(bw_img, (400, 400)))
 
-            widgets["bw"].config(image=bw_photo)
-            widgets["bw"].image = bw_photo
 
 
 # --- Power-Law (Gamma) Transformation ---
         gamma_img = create_gamma_image(gray_img)
         if gamma_img:
-            gamma_disp = gamma_img.copy()
-            gamma_disp.thumbnail((400, 400))
-            gamma_photo = ImageTk.PhotoImage(gamma_disp)
-
             if "gamma" not in widgets:
                 gamma_label_title = Label(widgets["gray"].master.master, text="Power-Law (Gamma) Transformation:", font=("Arial", 11, "bold"))
                 gamma_label_title.pack(anchor="w")
                 gamma_label = Label(widgets["gray"].master.master, bg="white", relief="sunken")
                 gamma_label.pack(pady=10)
                 widgets["gamma"] = gamma_label
-
-            widgets["gamma"].config(image=gamma_photo)
-            widgets["gamma"].image = gamma_photo
-
-
-        widgets["negative"].config(image=neg_photo)
-        widgets["negative"].image = neg_photo
-
-        gray_hist = gray_img.histogram()
-        plt.figure(figsize=(4, 3))
-        plt.bar(range(256), gray_hist, color='gray')
-        plt.tight_layout()
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        plt.close()
-        buf.seek(0)
-        gray_hist_img = Image.open(buf)
-        gray_hist_img.thumbnail((400, 400))
-        gray_hist_photo = ImageTk.PhotoImage(gray_hist_img)
-        widgets["gray_hist"].config(image=gray_hist_photo)
-        widgets["gray_hist"].image = gray_hist_photo
+            _set_widget_image(widgets, "gamma", _thumbnail_photo(gamma_img, (400, 400)))
 
         widgets["status"].config(text=f"Loaded: {os.path.basename(filepath)}", fg="green")
 
