@@ -9,7 +9,7 @@ def gradient_sobel(image: Image.Image) -> Image.Image:
     Computes the gradient magnitude using Sobel operators in x and y directions.
     Magnitude = sqrt(Gx² + Gy²)
     """
-    img_np = np.array(image, dtype=np.float32)
+    img_np = np.array(image.convert("L"), dtype=np.float32)
     
     # Sobel kernels for horizontal (Gx) and vertical (Gy) gradients
     sobel_x = np.array([
