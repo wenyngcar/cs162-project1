@@ -1,4 +1,4 @@
-from tkinter import Tk, filedialog, Label, simpledialog
+from tkinter import Tk, filedialog, Label, simpledialog, Toplevel
 from PIL import Image, ImageDraw, ImageTk
 import os, io, matplotlib.pyplot as plt
 from pcx_reader import read_pcx_header, read_pcx_palette, decompress_rle
@@ -139,13 +139,31 @@ def open_pcx(widgets):
 
         # RGB channels and their histograms
         r_img, g_img, b_img, (r_channel, g_channel, b_channel) = create_rgb_channel_images(img)
-        _set_widget_image(widgets, "red", _thumbnail_photo(r_img, (250, 250)))
-        _set_widget_image(widgets, "green", _thumbnail_photo(g_img, (250, 250)))
-        _set_widget_image(widgets, "blue", _thumbnail_photo(b_img, (250, 250)))
+        r_hist = create_histogram(r_channel, 'red')
+        g_hist = create_histogram(g_channel, 'green')
+        b_hist = create_histogram(b_channel, 'blue')
 
-        _set_widget_image(widgets, "red_hist", _thumbnail_photo(create_histogram(r_channel, 'red'), (250, 180)))
-        _set_widget_image(widgets, "green_hist", _thumbnail_photo(create_histogram(g_channel, 'green'), (250, 180)))
-        _set_widget_image(widgets, "blue_hist", _thumbnail_photo(create_histogram(b_channel, 'blue'), (250, 180)))
+        def show_channel_window(channel_name, channel_img, hist_img):
+            win = Toplevel()
+            win.title(f"{channel_name} Channel and Histogram")
+
+            img_label = Label(win, text=f"{channel_name} Channel Image", font=("Arial", 11, "bold"))
+            img_label.pack()
+            channel_photo = ImageTk.PhotoImage(channel_img.resize((300, 300)))
+            lbl1 = Label(win, image=channel_photo)
+            lbl1.image = channel_photo
+            lbl1.pack(pady=5)
+
+            hist_label = Label(win, text=f"{channel_name} Channel Histogram", font=("Arial", 11, "bold"))
+            hist_label.pack()
+            hist_photo = ImageTk.PhotoImage(hist_img.resize((300, 200)))
+            lbl2 = Label(win, image=hist_photo)
+            lbl2.image = hist_photo
+            lbl2.pack(pady=5)
+
+        widgets["red_btn"].configure(command=lambda: show_channel_window("Red", r_img, r_hist))
+        widgets["green_btn"].configure(command=lambda: show_channel_window("Green", g_img, g_hist))
+        widgets["blue_btn"].configure(command=lambda: show_channel_window("Blue", b_img, b_hist))
 
         # Grayscale view and histogram
         gray_img = create_grayscale_image(img)
